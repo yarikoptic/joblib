@@ -165,7 +165,7 @@ If the `square` function is called with the same input argument, its
 return value is loaded from the disk using memmapping::
 
     >>> res = square(a)
-    >>> print repr(res)
+    >>> print repr(res) # doctest: +SKIP
     memmap([[ 0,  0,  1],
            [ 1,  1,  1],
            [16,  4,  1]])
