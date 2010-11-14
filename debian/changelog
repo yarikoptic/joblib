@@ -2,7 +2,7 @@ joblib (0.4.6~rc1-1) experimental; urgency=low
 
   * Upcoming upstream bugfix release
   * Added a patch for older distributions (e.g. lenny) to avoid
-    testing 1 failing doctest due to automaticly non-memmaped arrays
+    testing 1 failing doctest due non-memmaped automatically arrays
     with older numpy releases
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Sun, 14 Nov 2010 01:23:01 -0500
