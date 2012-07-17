@@ -1,3 +1,11 @@
+joblib (0.6.4-2) unstable; urgency=low
+
+  * debian/patches/up_no_parallel_if_no_locking -- additional check for 
+    availability of locking mechanisms to decide upon using multiprocessing.
+    Needed for robust functioning on kfrebsd systems.
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Mon, 16 Jul 2012 22:59:47 -0400
+
 joblib (0.6.4-1) unstable; urgency=low
 
   * New upstream release
