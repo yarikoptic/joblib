@@ -11,7 +11,7 @@ Last-Update: 2012-07-16
 
 --- a/joblib/parallel.py
 +++ b/joblib/parallel.py
-@@ -28,6 +28,15 @@ if multiprocessing:
+@@ -28,6 +28,16 @@ if multiprocessing:
      except ImportError:
          multiprocessing = None
  
@@ -19,8 +19,9 @@ Last-Update: 2012-07-16
 +#            issue a warning if not
 +if multiprocessing:
 +    try:
-+        import multiprocessing.synchronize
-+    except ImportError, e:
++        _sem = multiprocessing.Semaphore()
++        del _sem # cleanup
++    except (ImportError, OSError), e:
 +        multiprocessing = None
 +        warnings.warn('%s.  joblib will operate in serial mode' % (e,))
 +

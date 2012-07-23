@@ -1,3 +1,10 @@
+joblib (0.6.4-3) unstable; urgency=low
+
+  * debian/patches/up_no_parallel_if_no_locking -- needed more work for
+    python2.6 compatibility where the exception was not triggered.
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Mon, 23 Jul 2012 14:35:45 -0400
+
 joblib (0.6.4-2) unstable; urgency=low
 
   * debian/patches/up_no_parallel_if_no_locking -- additional check for 
