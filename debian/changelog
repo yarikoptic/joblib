@@ -1,3 +1,10 @@
+joblib (0.6.5-1) experimental; urgency=low
+
+  * New upstream bugfix release
+    - contains up_no_parallel_if_no_locking patch (dropped)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Sun, 23 Sep 2012 11:24:00 -0400
+
 joblib (0.6.4-3) unstable; urgency=low
 
   * debian/patches/up_no_parallel_if_no_locking -- needed more work for
