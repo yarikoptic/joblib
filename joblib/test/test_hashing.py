@@ -197,3 +197,65 @@ def test_bound_cached_methods_hash():
     b = KlassWithCachedMethod()
     nose.tools.assert_equal(hash(filter_args(a.f.func, [], (1, ))),
                             hash(filter_args(b.f.func, [], (1, ))))
+
+
+@with_numpy
+def test_hash_object_dtype():
+    """ Make sure that ndarrays with dtype `object' hash correctly."""
+
+    a = np.array([np.arange(i) for i in range(6)], dtype=object)
+    b = np.array([np.arange(i) for i in range(6)], dtype=object)
+
+    nose.tools.assert_equal(hash(a),
+                            hash(b))
+
+
+def test_dict_hash():
+    # Check that dictionaries hash consistently, eventhough the ordering
+    # of the keys is not garanteed
+    k = KlassWithCachedMethod()
+
+    d = {'#s12069__c_maps.nii.gz': [33],
+         '#s12158__c_maps.nii.gz': [33],
+         '#s12258__c_maps.nii.gz': [33],
+         '#s12277__c_maps.nii.gz': [33],
+         '#s12300__c_maps.nii.gz': [33],
+         '#s12401__c_maps.nii.gz': [33],
+         '#s12430__c_maps.nii.gz': [33],
+         '#s13817__c_maps.nii.gz': [33],
+         '#s13903__c_maps.nii.gz': [33],
+         '#s13916__c_maps.nii.gz': [33],
+         '#s13981__c_maps.nii.gz': [33],
+         '#s13982__c_maps.nii.gz': [33],
+         '#s13983__c_maps.nii.gz': [33]}
+
+    a = k.f(d)
+    b = k.f(a)
+
+    nose.tools.assert_equal(hash(a),
+                            hash(b))
+
+
+def test_set_hash():
+    # Check that sets hash consistently, eventhough their ordering
+    # is not garanteed
+    k = KlassWithCachedMethod()
+
+    s = set(['#s12069__c_maps.nii.gz',
+             '#s12158__c_maps.nii.gz',
+             '#s12258__c_maps.nii.gz',
+             '#s12277__c_maps.nii.gz',
+             '#s12300__c_maps.nii.gz',
+             '#s12401__c_maps.nii.gz',
+             '#s12430__c_maps.nii.gz',
+             '#s13817__c_maps.nii.gz',
+             '#s13903__c_maps.nii.gz',
+             '#s13916__c_maps.nii.gz',
+             '#s13981__c_maps.nii.gz',
+             '#s13982__c_maps.nii.gz',
+             '#s13983__c_maps.nii.gz'])
+
+    a = k.f(s)
+    b = k.f(a)
+
+    nose.tools.assert_equal(hash(a), hash(b))
