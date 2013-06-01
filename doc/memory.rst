@@ -51,23 +51,23 @@ A simple example:
 
     >>> @memory.cache
     ... def f(x):
-    ...     print 'Running f(%s)' % x
+    ...     print('Running f(%s)' % x)
     ...     return x
 
   When we call this function twice with the same argument, it does not
   get executed the second time, and the output gets loaded from the pickle
   file::
 
-    >>> print f(1)
+    >>> print(f(1))
     Running f(1)
     1
-    >>> print f(1)
+    >>> print(f(1))
     1
 
   However, when we call it a third time, with a different argument, the
   output gets recomputed::
 
-    >>> print f(2)
+    >>> print(f(2))
     Running f(2)
     2
 
@@ -108,12 +108,12 @@ An example
 
     >>> @memory.cache
     ... def g(x):
-    ...     print 'A long-running calculation, with parameter', x
+    ...     print('A long-running calculation, with parameter %s' % x)
     ...     return np.hamming(x)
 
     >>> @memory.cache
     ... def h(x):
-    ...     print 'A second long-running calculation, using g(x)'
+    ...     print('A second long-running calculation, using g(x)')
     ...     return np.vander(x)
 
   If we call the function h with the array created by the same call to g,
@@ -144,17 +144,17 @@ using memmapping (memory mapping)::
     >>> cachedir2 = mkdtemp()
     >>> memory2 = Memory(cachedir=cachedir2, mmap_mode='r')
     >>> square = memory2.cache(np.square)
-    >>> a = np.vander(np.arange(3))
+    >>> a = np.vander(np.arange(3)).astype(np.float)
     >>> square(a)
     ________________________________________________________________________________
     [Memory] Calling square...
-    square(array([[0, 0, 1],
-           [1, 1, 1],
-           [4, 2, 1]]))
+    square(array([[ 0.,  0.,  1.],
+           [ 1.,  1.,  1.],
+           [ 4.,  2.,  1.]]))
     ___________________________________________________________square - 0.0s, 0.0min
-    array([[ 0,  0,  1],
-           [ 1,  1,  1],
-           [16,  4,  1]])
+    array([[  0.,   0.,   1.],
+           [  1.,   1.,   1.],
+           [ 16.,   4.,   1.]])
 
 .. note::
 
@@ -165,10 +165,10 @@ If the `square` function is called with the same input argument, its
 return value is loaded from the disk using memmapping::
 
     >>> res = square(a)
-    >>> print repr(res)
-    memmap([[ 0,  0,  1],
-           [ 1,  1,  1],
-           [16,  4,  1]])
+    >>> print(repr(res))
+    memmap([[  0.,   0.,   1.],
+           [  1.,   1.,   1.],
+           [ 16.,   4.,   1.]])
 
 ..
 
@@ -205,28 +205,29 @@ Gotchas
 
     >>> @memory.cache
     ... def func(x):
-    ...     print 'Running func(%s)' % x
+    ...     print('Running func(%s)' % x)
 
     >>> func2 = func
-
+    
     >>> @memory.cache
     ... def func(x):
-    ...     print 'Running a different func(%s)' % x
+    ...     print('Running a different func(%s)' % x)
 
     >>> func(1)
     Running a different func(1)
     >>> func2(1)
-    memory.rst:0: JobLibCollisionWarning: Cannot detect name collisions for function 'func'
+    memory.rst:0: JobLibCollisionWarning: Possible name collisions between functions 'func' (<doctest memory.rst>:30) and 'func' (<doctest memory.rst>:28)
     Running func(1)
     >>> func(1)
+    memory.rst:0: JobLibCollisionWarning: Possible name collisions between functions 'func' (<doctest memory.rst>:28) and 'func' (<doctest memory.rst>:30)
     Running a different func(1)
     >>> func2(1)
     Running func(1)
 
-  Beware that all lambda functions have the same name::
+  Beware that with Python 2.6 lambda functions cannot be separated out::
 
     >>> def my_print(x):
-    ...     print x
+    ...     print(x)
 
     >>> f = memory.cache(lambda : my_print(1))
     >>> g = memory.cache(lambda : my_print(2))
@@ -234,27 +235,12 @@ Gotchas
     >>> f()
     1
     >>> f()
-    >>> g()
+    >>> g() # doctest: +SKIP
     memory.rst:0: JobLibCollisionWarning: Cannot detect name collisions for function '<lambda>'
     2
-    >>> g()
-    >>> f()
+    >>> g() # doctest: +SKIP
+    >>> f() # doctest: +SKIP
     1
-
-..
-  Thus to use lambda functions reliably, you have to specify the name
-  used for caching::
-
-  FIXME
-
- #   >>> f = make(func=lambda : my_print(1), cachedir=cachedir, name='f')
- #   >>> g = make(func=lambda : my_print(2), cachedir=cachedir, name='g')
- #
- #   >>> f()
- #   1
- #   >>> g()
- #   2
- #   >>> f()
 
 * **memory cannot be used on some complex objects**, e.g. a callable
   object with a `__call__` method.
@@ -262,7 +248,7 @@ Gotchas
   However, it works on numpy ufuncs::
 
     >>> sin = memory.cache(np.sin)
-    >>> print sin(0)
+    >>> print(sin(0))
     0.0
 
 * **caching methods**: you cannot decorate a method at class definition,
@@ -294,7 +280,7 @@ change, for instance a debug flag. `Memory` provides the `ignore` list::
 
     >>> @memory.cache(ignore=['debug'])
     ... def my_func(x, debug=True):
-    ...	    print 'Called with x =', x
+    ...	    print('Called with x = %s' % x)
     >>> my_func(0)
     Called with x = 0
     >>> my_func(0, debug=False)

@@ -1,4 +1,5 @@
 
+=====================================================
 Embarrassingly parallel for loops
 =====================================================
 
@@ -23,8 +24,33 @@ each of the items of the list. The `delayed` function is a simple trick
 to be able to create a tuple `(function, args, kwargs)` with a
 function-call syntax.
 
-_____
+.. warning::
 
+   Under Windows, it is important to protect the main loop of code to
+   avoid recursive spawning of subprocesses when using joblib.Parallel.
+   In other words, you should be writing code like this:
+
+   .. code-block:: python
+
+      import ....
+
+      def function1(...):
+          ...
+
+      def function2(...):
+          ...
+
+      ...
+      if __name__ == '__main__':
+          # do stuff with imports and functions defined about
+          ...
+
+   **No** code should *run* outside of the "if __name__ == '__main__'"
+   blocks, only imports and definitions.
+
+
+`Parallel` reference documentation
+===================================
 
 .. autoclass:: joblib.Parallel
    :members: auto

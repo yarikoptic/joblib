@@ -12,7 +12,8 @@ import hashlib
 import tempfile
 import os
 import gc
-import StringIO
+import io
+import collections
 
 from ..hashing import hash
 from ..func_inspect import filter_args
@@ -22,6 +23,12 @@ from .common import np, with_numpy
 from .test_memory import env as test_memory_env
 from .test_memory import setup_module as test_memory_setup_func
 from .test_memory import teardown_module as test_memory_teardown_func
+
+try:
+    # Python 2/Python 3 compat
+    unicode('str')
+except NameError:
+    unicode = lambda s: s
 
 
 ###############################################################################
@@ -70,23 +77,29 @@ class KlassWithCachedMethod(object):
 def test_trival_hash():
     """ Smoke test hash on various types.
     """
-    obj_list = [1, 1., 1 + 1j,
-                'a',
-                (1, ), [1, ], {1:1},
+    obj_list = [1, 2, 1., 2., 1 + 1j, 2. + 1j,
+                'a', 'b',
+                (1, ), (1, 1, ), [1, ], [1, 1, ],
+                {1: 1}, {1: 2}, {2: 1},
                 None,
+                gc.collect,
+                [1, ].append,
                ]
     for obj1 in obj_list:
         for obj2 in obj_list:
+            # Check that 2 objects have the same hash only if they are
+            # the same.
             yield nose.tools.assert_equal, hash(obj1) == hash(obj2), \
                 obj1 is obj2
 
 
 def test_hash_methods():
-    """ Check that hashing instance methods works """
-    a = StringIO.StringIO('a')
-    b = StringIO.StringIO('b')
+    # Check that hashing instance methods works
+    a = io.StringIO(unicode('a'))
     nose.tools.assert_equal(hash(a.flush), hash(a.flush))
-    nose.tools.assert_not_equal(hash(a.flush), hash(b.flush))
+    a1 = collections.deque(range(10))
+    a2 = collections.deque(range(9))
+    nose.tools.assert_not_equal(hash(a1.extend), hash(a2.extend))
 
 
 @with_numpy
@@ -137,7 +150,7 @@ def test_hash_memmap():
             gc.collect()
             try:
                 os.unlink(filename)
-            except OSError, e:
+            except OSError as e:
                 # Under windows, some files don't get erased.
                 if not os.name == 'nt':
                     raise e
@@ -163,7 +176,12 @@ def test_hash_numpy_performance():
     """
     rnd = np.random.RandomState(0)
     a = rnd.random_sample(1000000)
-    md5_hash = lambda x: hashlib.md5(np.getbuffer(x)).hexdigest()
+    if hasattr(np, 'getbuffer'):
+        # Under python 3, there is no getbuffer
+        getbuffer = np.getbuffer
+    else:
+        getbuffer = memoryview
+    md5_hash = lambda x: hashlib.md5(getbuffer(x)).hexdigest()
 
     relative_diff = relative_time(md5_hash, hash, a)
     yield nose.tools.assert_true, relative_diff < 0.1
@@ -208,6 +226,15 @@ def test_hash_object_dtype():
 
     nose.tools.assert_equal(hash(a),
                             hash(b))
+
+
+@with_numpy
+def test_numpy_scalar():
+    # Numpy scalars are built from compiled functions, and lead to
+    # strange pickling paths explored, that can give hash collisions
+    a = np.float64(2.0)
+    b = np.float64(3.0)
+    nose.tools.assert_not_equal(hash(a), hash(b))
 
 
 def test_dict_hash():

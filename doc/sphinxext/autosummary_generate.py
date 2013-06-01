@@ -14,14 +14,17 @@ Example Makefile rule::
             ./ext/autosummary_generate.py -o source/generated source/*.rst
 
 """
-import glob
 import re
 import inspect
 import os
 import optparse
 import pydoc
+import sys
 
-from autosummary import import_by_name
+if sys.version_info[0] == 2:
+    from autosummary import import_by_name
+else:
+    from .autosummary import import_by_name
 
 
 try:

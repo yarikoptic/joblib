@@ -5,12 +5,14 @@ My own variation on function-specific inspect-like features.
 # Author: Gael Varoquaux <gael dot varoquaux at normalesup dot org>
 # Copyright (c) 2009 Gael Varoquaux
 # License: BSD Style, 3 clauses.
-from __future__ import with_statement
 
 from itertools import islice
 import inspect
 import warnings
+import re
 import os
+
+from ._compat import _basestring
 
 
 def get_func_code(func):
@@ -36,22 +38,36 @@ def get_func_code(func):
     """
     source_file = None
     try:
+        code = func.__code__
+        source_file = code.co_filename
+        if not os.path.exists(source_file):
+            # Use inspect for lambda functions and functions defined in an
+            # interactive shell, or in doctests
+            source_code = ''.join(inspect.getsourcelines(func)[0])
+            line_no = 1
+            if source_file.startswith('<doctest '):
+                source_file, line_no = re.match(
+                            '\<doctest (.*\.rst)\[(.*)\]\>',
+                            source_file).groups()
+                line_no = int(line_no)
+                source_file = '<doctest %s>' % source_file
+            return source_code, source_file, line_no
         # Try to retrieve the source code.
-        source_file = func.func_code.co_filename
         with open(source_file) as source_file_obj:
-            first_line = func.func_code.co_firstlineno
+            first_line = code.co_firstlineno
             # All the lines after the function definition:
             source_lines = list(islice(source_file_obj, first_line - 1, None))
         return ''.join(inspect.getblock(source_lines)), source_file, first_line
     except:
         # If the source code fails, we use the hash. This is fragile and
         # might change from one session to another.
-        if hasattr(func, 'func_code'):
-            return str(func.func_code.__hash__()), source_file, -1
+        if hasattr(func, '__code__'):
+            # Python 3.X
+            return str(func.__code__.__hash__()), source_file, -1
         else:
-            # Weird objects like numpy ufunc don't have func_code
+            # Weird objects like numpy ufunc don't have __code__
             # This is fragile, as quite often the id of the object is
-            # in the repr, so it might not persist accross sessions,
+            # in the repr, so it might not persist across sessions,
             # however it will work for ufuncs.
             return repr(func), source_file, -1
 
@@ -59,8 +75,13 @@ def get_func_code(func):
 def _clean_win_chars(string):
     "Windows cannot encode some characters in filenames"
     import urllib
+    if hasattr(urllib, 'quote'):
+        quote = urllib.quote
+    else:
+        # In Python 3, quote is elsewhere
+        quote = urllib.parse.quote
     for char in ('<', '>', '!', ':', '\\'):
-        string = string.replace(char, urllib.quote(char))
+        string = string.replace(char, quote(char))
     return string
 
 
@@ -98,8 +119,13 @@ def get_func_name(func, resolv_alias=True, win_characters=True):
             filename = None
         if filename is not None:
             # mangling of full path to filename
-            filename = filename.replace(os.sep, '-')
-            filename = filename.replace(":", "-")
+            parts = filename.split(os.sep)
+            if parts[-1].startswith('<ipython-input'):
+                # function is defined in an IPython session. The filename
+                # will change with every new kernel instance. This hack
+                # always returns the same filename
+                parts[-1] = '__ipython-input__'
+            filename = '-'.join(parts)
             if filename.endswith('.py'):
                 filename = filename[:-3]
             module = module + '-' + filename
@@ -152,7 +178,7 @@ def filter_args(func, ignore_lst, args=(), kwargs=dict()):
             List of filtered Keyword arguments.
     """
     args = list(args)
-    if isinstance(ignore_lst, basestring):
+    if isinstance(ignore_lst, _basestring):
         # Catch a common mistake
         raise ValueError('ignore_lst must be a list of parameters to ignore '
             '%s (type %s) was given' % (ignore_lst, type(ignore_lst)))
@@ -175,7 +201,7 @@ def filter_args(func, ignore_lst, args=(), kwargs=dict()):
     if inspect.ismethod(func):
         # First argument is 'self', it has been removed by Python
         # we need to add it back:
-        args = [func.im_self, ] + args
+        args = [func.__self__, ] + args
     # XXX: Maybe I need an inspect.isbuiltin to detect C-level methods, such
     # as on ndarrays.
 
@@ -202,7 +228,7 @@ def filter_args(func, ignore_lst, args=(), kwargs=dict()):
                            name,
                            repr(args)[1:-1],
                            ', '.join('%s=%s' % (k, v)
-                                    for k, v in kwargs.iteritems())
+                                    for k, v in kwargs.items())
                            )
                         )
 

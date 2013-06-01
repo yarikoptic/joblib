@@ -62,8 +62,10 @@ except ImportError:
     class nodes(object):
         comment = object
 
-
-from docscrape_sphinx import get_doc_object
+if sys.version_info[0] == 2:
+    from docscrape_sphinx import get_doc_object
+else:
+    from .docscrape_sphinx import get_doc_object
 
 
 def setup(app):
@@ -331,7 +333,7 @@ def _import_by_name(name):
             return obj
         else:
             return sys.modules[modname]
-    except (ValueError, ImportError, AttributeError, KeyError), e:
+    except (ValueError, ImportError, AttributeError, KeyError) as e:
         raise ImportError(e)
 
 #------------------------------------------------------------------------------
