@@ -1,3 +1,9 @@
+joblib (0.7.0+git14-g3e5784c-1) unstable; urgency=low
+
+  * A post-release snapshot -- contains few fixes on top of the released version.
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Sat, 01 Jun 2013 11:44:26 -0400
+
 joblib (0.6.5-1) experimental; urgency=low
 
   * New upstream bugfix release
