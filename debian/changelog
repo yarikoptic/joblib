@@ -1,8 +1,11 @@
 joblib (0.7.1-1) unstable; urgency=low
 
   * New upstream release
+  * debian/control
+    - boost X-Python-Version to >=2.6 (for squeeze backport builds)
+    - rename XS-Vcs-* to Vcs-*
 
- -- Yaroslav Halchenko <debian@onerussian.com>  Mon, 05 Aug 2013 10:54:42 -0400
+ -- Yaroslav Halchenko <debian@onerussian.com>  Mon, 05 Aug 2013 12:47:58 -0400
 
 joblib (0.7.0+git14-g3e5784c-1) unstable; urgency=low
 
