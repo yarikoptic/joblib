@@ -8,6 +8,7 @@ Helpers for embarrassingly parallel code.
 import os
 import sys
 import warnings
+from collections import Sized
 from math import sqrt
 import functools
 import time
@@ -455,6 +456,8 @@ class Parallel(Logger):
         if self._jobs:
             raise ValueError('This Parallel instance is already running')
         n_jobs = self.n_jobs
+        if n_jobs == 0:
+            raise ValueError('n_jobs == 0 in Parallel has no meaning')
         if n_jobs < 0 and multiprocessing is not None:
             n_jobs = max(multiprocessing.cpu_count() + 1 + n_jobs, 1)
 
@@ -492,8 +495,8 @@ class Parallel(Logger):
                 self.exceptions.extend([KeyboardInterrupt, WorkerInterrupt])
 
         pre_dispatch = self.pre_dispatch
-        if isinstance(iterable, list):
-            # We are given a list. No need to be lazy
+        if isinstance(iterable, Sized):
+            # We are given a sized (an object with len). No need to be lazy.
             pre_dispatch = 'all'
 
         if pre_dispatch == 'all' or n_jobs == 1:
