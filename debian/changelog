@@ -1,3 +1,9 @@
+joblib (0.8.0~a3+git33-gc633f55-1) neurodebian-devel; urgency=medium
+
+  * New upstream snapshot from 0.8.0a3-33-gc633f55
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 09 Apr 2014 20:22:25 -0400
+
 joblib (0.7.1-1) unstable; urgency=low
 
   * New upstream release
