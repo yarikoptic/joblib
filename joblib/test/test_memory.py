@@ -8,15 +8,18 @@ Test the memory module.
 
 import shutil
 import os
+import os.path
 from tempfile import mkdtemp
 import pickle
 import warnings
 import io
 import sys
+import time
 
 import nose
 
-from ..memory import Memory, MemorizedFunc
+from ..memory import Memory, MemorizedFunc, NotMemorizedFunc, MemorizedResult
+from ..memory import NotMemorizedResult
 from .common import with_numpy, np
 
 
@@ -37,13 +40,12 @@ def setup_module():
     """ Test setup.
     """
     cachedir = mkdtemp()
-    #cachedir = 'foobar'
     env['dir'] = cachedir
     if os.path.exists(cachedir):
         shutil.rmtree(cachedir)
     # Don't make the cachedir, Memory should be able to do that on the fly
     print(80 * '_')
-    print('test_memory setup')
+    print('test_memory setup (%s)' % env['dir'])
     print(80 * '_')
 
 
@@ -60,7 +62,7 @@ def teardown_module():
     """
     shutil.rmtree(env['dir'], False, _rmtree_onerror)
     print(80 * '_')
-    print('test_memory teardown')
+    print('test_memory teardown (%s)' % env['dir'])
     print(80 * '_')
 
 
@@ -68,7 +70,7 @@ def teardown_module():
 # Helper function for the tests
 def check_identity_lazy(func, accumulator):
     """ Given a function and an accumulator (a list that grows every
-        time the function is called, check that the function can be
+        time the function is called), check that the function can be
         decorated by memory to be a lazy identity.
     """
     # Call each function with several arguments, and check that it is
@@ -352,6 +354,29 @@ def test_memory_numpy():
                 yield nose.tools.assert_equal, len(accumulator), i + 1
 
 
+@with_numpy
+def test_memory_numpy_check_mmap_mode():
+    """Check that mmap_mode is respected even at the first call"""
+
+    memory = Memory(cachedir=env['dir'], mmap_mode='r', verbose=0)
+    memory.clear(warn=False)
+
+    @memory.cache()
+    def twice(a):
+        return a * 2
+
+    a = np.ones(3)
+
+    b = twice(a)
+    c = twice(a)
+
+    nose.tools.assert_true(isinstance(c, np.memmap))
+    nose.tools.assert_equal(c.mode, 'r')
+
+    nose.tools.assert_true(isinstance(b, np.memmap))
+    nose.tools.assert_equal(b.mode, 'r')
+
+
 def test_memory_exception():
     """ Smoketest the exception handling of Memory.
     """
@@ -390,6 +415,24 @@ def test_memory_ignore():
     yield nose.tools.assert_equal, len(accumulator), 1
     z(0, y=2)
     yield nose.tools.assert_equal, len(accumulator), 1
+
+
+def test_partial_decoration():
+    "Check cache may be called with kwargs before decorating"
+    memory = Memory(cachedir=env['dir'], verbose=0)
+
+    test_values = [
+        (['x'], 100, 'r'),
+        ([], 10, None),
+    ]
+    for ignore, verbose, mmap_mode in test_values:
+        @memory.cache(ignore=ignore, verbose=verbose, mmap_mode=mmap_mode)
+        def z(x):
+            pass
+
+        yield nose.tools.assert_equal, z.ignore, ignore
+        yield nose.tools.assert_equal, z._verbose, verbose
+        yield nose.tools.assert_equal, z.mmap_mode, mmap_mode
 
 
 def test_func_dir():
@@ -436,23 +479,72 @@ def test_persistence():
     # Smoke test that pickling a memory with cachedir=None works
     memory = Memory(cachedir=None, verbose=0)
     pickle.loads(pickle.dumps(memory))
+    g = memory.cache(f)
+    gp = pickle.loads(pickle.dumps(g))
+    gp(1)
 
 
-def test_format_signature():
-    # Test the signature formatting.
-    func = MemorizedFunc(f, cachedir=env['dir'])
-    path, sgn = func.format_signature(f, list(range(10)))
-    yield nose.tools.assert_equal, \
-                sgn, \
-                'f([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])'
-    path, sgn = func.format_signature(f, list(range(10)),
-                                      y=list(range(10)))
-    yield nose.tools.assert_equal, \
-                sgn, \
-        'f([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], y=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])'
-
-
-@with_numpy
-def test_format_signature_numpy():
-    """ Test the format signature formatting with numpy.
+def test_call_and_shelve():
+    """Test MemorizedFunc outputting a reference to cache.
     """
+
+    for func, Result in zip((MemorizedFunc(f, env['dir']),
+                             NotMemorizedFunc(f),
+                             Memory(cachedir=env['dir']).cache(f),
+                             Memory(cachedir=None).cache(f),
+                             ),
+                            (MemorizedResult, NotMemorizedResult,
+                             MemorizedResult, NotMemorizedResult)):
+        nose.tools.assert_equal(func(2), 5)
+        result = func.call_and_shelve(2)
+        nose.tools.assert_true(isinstance(result, Result))
+        nose.tools.assert_equal(result.get(), 5)
+
+        result.clear()
+        nose.tools.assert_raises(KeyError, result.get)
+        result.clear()  # Do nothing if there is no cache.
+
+
+def test_memorized_pickling():
+    for func in (MemorizedFunc(f, env['dir']), NotMemorizedFunc(f)):
+        filename = os.path.join(env['dir'], 'pickling_test.dat')
+        result = func.call_and_shelve(2)
+        with open(filename, 'wb') as fp:
+            pickle.dump(result, fp)
+        with open(filename, 'rb') as fp:
+            result2 = pickle.load(fp)
+        nose.tools.assert_equal(result2.get(), result.get())
+        os.remove(filename)
+
+
+def test_memorized_repr():
+    func = MemorizedFunc(f, env['dir'])
+    result = func.call_and_shelve(2)
+    result2 = eval(repr(result))
+    nose.tools.assert_equal(result.get(), result2.get())
+
+    # Smoke test on deprecated methods
+    func.format_signature(2)
+    func.format_call(2)
+
+    # Smoke test with NotMemorizedFunc
+    func = NotMemorizedFunc(f)
+    repr(func)
+    repr(func.call_and_shelve(2))
+
+    # Smoke test for message output (increase code coverage)
+    func = MemorizedFunc(f, env['dir'], verbose=11, timestamp=time.time())
+    result = func.call_and_shelve(11)
+    result.get()
+
+    func = MemorizedFunc(f, env['dir'], verbose=11)
+    result = func.call_and_shelve(11)
+    result.get()
+
+    func = MemorizedFunc(f, env['dir'], verbose=5, timestamp=time.time())
+    result = func.call_and_shelve(11)
+    result.get()
+
+    func = MemorizedFunc(f, env['dir'], verbose=5)
+    result = func.call_and_shelve(11)
+    result.get()

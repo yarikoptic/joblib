@@ -1,6 +1,86 @@
 Latest changes
 ===============
 
+
+In development
+--------------
+
+20140-02-24
+Philippe Gervais
+
+   New ``Memory.call_and_shelve`` API to handle memoized results by
+   reference instead of by value.
+
+
+Release 0.8.0a3
+---------------
+
+2014-01-10
+Olivier Grisel & Gael Varoquaux
+
+   FIX #105: Race condition in task iterable consumption when
+   pre_dispatch != 'all' that could cause crash with error messages "Pools
+   seems closed" and "ValueError: generator already executing".
+
+2014-01-12
+Olivier Grisel
+
+   FIX #72: joblib cannot persist "output_dir" keyword argument.
+
+
+Release 0.8.0a2
+---------------
+
+2013-12-23
+Olivier Grisel
+
+    ENH: set default value of Parallel's max_nbytes to 100MB
+
+    Motivation: avoid introducing disk latency on medium sized
+    parallel workload where memory usage is not an issue.
+
+    FIX: properly handle the JOBLIB_MULTIPROCESSING env variable
+
+    FIX: timeout test failures under windows
+
+
+Release 0.8.0a
+--------------
+
+2013-12-19
+Olivier Grisel
+
+    FIX: support the new Python 3.4 multiprocessing API
+
+
+2013-12-05
+Olivier Grisel
+
+    ENH: make Memory respect mmap_mode at first call too
+
+    ENH: add a threading based backend to Parallel
+
+    This is low overhead alternative backend to the default multiprocessing
+    backend that is suitable when calling compiled extensions that release
+    the GIL.
+
+
+Author: Dan Stahlke <dan@stahlke.org>
+Date:   2013-11-08
+
+    FIX: use safe_repr to print arg vals in trace
+
+    This fixes a problem in which extremely long (and slow) stack traces would
+    be produced when function parameters are large numpy arrays.
+
+
+2013-09-10
+Olivier Grisel
+
+    ENH: limit memory copy with Parallel by leveraging numpy.memmap when
+    possible
+
+
 Release 0.7.1
 ---------------
 
