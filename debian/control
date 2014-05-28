@@ -2,8 +2,10 @@ Source: joblib
 Section: python
 Priority: optional
 Maintainer: Yaroslav Halchenko <debian@onerussian.com>
-Build-Depends: debhelper (>= 7.0.50~), python-all (>= 2.5), python-support (>= 0.6), python-setuptools(>= 0.6), python-nose, python-numpy
-Standards-Version: 3.9.3
+Build-Depends: debhelper (>= 7.0.50~),
+               python-all (>= 2.5), python-setuptools(>= 0.6), python-nose, python-numpy,
+               python3-all (>= 2.5), python3-setuptools(>= 0.6), python3-nose, python3-numpy,
+Standards-Version: 3.9.5
 Homepage: http://packages.python.org/joblib/
 X-Python-Version: >=2.6
 Vcs-Git: git://github.com/yarikoptic/joblib.git
@@ -17,6 +19,7 @@ Recommends: python-numpy, python-nose, python-simplejson
 Description: tools to provide lightweight pipelining in Python
  Joblib is a set of tools to provide lightweight pipelining in
  Python. In particular, joblib offers:
+ .
   - transparent disk-caching of the output values and lazy
     re-evaluation (memoize pattern)
   - easy simple parallel computing
@@ -24,3 +27,23 @@ Description: tools to provide lightweight pipelining in Python
  .
  Joblib is optimized to be fast and robust in particular on large,
  long-running functions and has specific optimizations for numpy arrays.
+ .
+ This package contains the Python 2 version.
+
+Package: python3-joblib
+Architecture: all
+Depends: ${python3:Depends}, ${misc:Depends}
+Recommends: python3-numpy, python3-nose, python3-simplejson
+Description: tools to provide lightweight pipelining in Python
+ Joblib is a set of tools to provide lightweight pipelining in
+ Python. In particular, joblib offers:
+ .
+  - transparent disk-caching of the output values and lazy
+    re-evaluation (memoize pattern)
+  - easy simple parallel computing
+  - logging and tracing of the execution
+ .
+ Joblib is optimized to be fast and robust in particular on large,
+ long-running functions and has specific optimizations for numpy arrays.
+ .
+ This package contains the Python 3 version.

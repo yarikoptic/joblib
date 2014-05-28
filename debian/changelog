@@ -1,6 +1,10 @@
 joblib (0.8.0-1) unstable; urgency=medium
 
   * New upstream release
+  * python3-joblib package for Python3 support
+  * debian/control
+    - boosted policy to 3.9.5
+    - switched away from pysupport
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 28 May 2014 08:52:38 -0400
 
