@@ -1,4 +1,10 @@
-joblib (0.8.0-1) unstable; urgency=medium
+joblib (0.8.1-1) unstable; urgency=medium
+
+  * New upstream bugfix release
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 04 Jun 2014 09:26:48 -0400
+
+joblib (0.8.0-1) UNRELEASED; urgency=medium
 
   * New upstream release
   * python3-joblib package for Python3 support
