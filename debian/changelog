@@ -1,6 +1,10 @@
 joblib (0.8.1-1) unstable; urgency=medium
 
   * New upstream bugfix release
+  * debian/rules
+    - invoke tests directly with nosetests due to a mysterious infinite
+      looping with "spawn" context in Python3.4
+      (https://github.com/joblib/joblib/issues/140)
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 04 Jun 2014 09:26:48 -0400
 
