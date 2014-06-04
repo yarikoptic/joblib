@@ -1,3 +1,10 @@
+joblib (0.8.1-2) unstable; urgency=medium
+
+  * Fixing rushed out upload which beared too much trust into dh*_python magic
+    - provide install targets/files for both python2 and python3
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 04 Jun 2014 15:22:41 -0400
+
 joblib (0.8.1-1) unstable; urgency=medium
 
   * New upstream bugfix release

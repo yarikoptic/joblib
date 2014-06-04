@@ -8,6 +8,7 @@ Build-Depends: debhelper (>= 7.0.50~),
 Standards-Version: 3.9.5
 Homepage: http://packages.python.org/joblib/
 X-Python-Version: >=2.6
+X-Python3-Version: >=3.1
 Vcs-Git: git://github.com/yarikoptic/joblib.git
 Vcs-Browser: http://github.com/yarikoptic/joblib
 
