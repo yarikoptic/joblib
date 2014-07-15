@@ -2,6 +2,23 @@ Latest changes
 ===============
 
 
+Release 0.8.2
+-------------
+
+2014-06-30
+Olivier Grisel
+
+    BUG: use mmap_mode='r' by default in Parallel and MemmapingPool
+
+    The former default of mmap_mode='c' (copy-on-write) caused
+    problematic use of the paging file under Windows.
+
+2014-06-27
+Olivier Grisel
+
+    BUG: fix usage of the /dev/shm folder under Linux
+
+
 Release 0.8.1
 -------------
 
