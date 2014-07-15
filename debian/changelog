@@ -1,3 +1,9 @@
+joblib (0.8.2+git7-g0211f4c-1) unstable; urgency=medium
+
+  * New post new release upstream snapshot from 0.8.2-7-g0211f4c.
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Tue, 15 Jul 2014 12:47:34 -0400
+
 joblib (0.8.1-2) unstable; urgency=medium
 
   * Fixing rushed out upload which beared too much trust into dh*_python magic
