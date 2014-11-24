@@ -1,3 +1,9 @@
+joblib (0.8.4-1) experimental; urgency=medium
+
+  * New upstream release (improves pickling on python3)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Mon, 24 Nov 2014 08:56:40 -0500
+
 joblib (0.8.3-1) unstable; urgency=medium
 
   * New upstream minor release
