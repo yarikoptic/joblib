@@ -10,6 +10,8 @@ import time
 import sys
 import io
 import os
+from joblib.test.common import np, with_numpy
+
 try:
     import cPickle as pickle
     PickleError = TypeError
@@ -34,11 +36,12 @@ except ImportError:
     from Queue import Queue
 
 
-from ..parallel import Parallel, delayed, SafeFunction, WorkerInterrupt, \
-        mp, cpu_count, VALID_BACKENDS
-from ..my_exceptions import JoblibException
+from joblib.parallel import Parallel, delayed, SafeFunction, WorkerInterrupt
+from joblib.parallel import mp, cpu_count, VALID_BACKENDS
+from joblib.my_exceptions import JoblibException
 
 import nose
+from nose.tools import assert_equal, assert_true, assert_false, assert_raises
 
 
 ALL_VALID_BACKENDS = [None] + VALID_BACKENDS
@@ -47,7 +50,6 @@ if hasattr(mp, 'get_context'):
     # Custom multiprocessing context in Python 3.4+
     ALL_VALID_BACKENDS.append(mp.get_context('spawn'))
 
-###############################################################################
 
 def division(x, y):
     return x / y
@@ -151,14 +153,45 @@ def test_mutate_input_with_threads():
 
 
 def test_parallel_kwargs():
-    """ Check the keyword argument processing of pmap.
-    """
+    """Check the keyword argument processing of pmap."""
     lst = range(10)
     for n_jobs in (1, 4):
-        yield (nose.tools.assert_equal,
+        yield (assert_equal,
                [f(x, y=1) for x in lst],
-               Parallel(n_jobs=n_jobs)(delayed(f)(x, y=1) for x in lst)
-              )
+               Parallel(n_jobs=n_jobs)(delayed(f)(x, y=1) for x in lst))
+
+
+def check_parallel_context_manager(backend):
+    lst = range(10)
+    expected = [f(x, y=1) for x in lst]
+    with Parallel(n_jobs=4, backend=backend) as p:
+        # Internally a pool instance has been eagerly created and is managed
+        # via the context manager protocol
+        managed_pool = p._pool
+        if mp is not None:
+            assert_true(managed_pool is not None)
+
+        # We make call with the managed parallel object several times inside
+        # the managed block:
+        assert_equal(expected, p(delayed(f)(x, y=1) for x in lst))
+        assert_equal(expected, p(delayed(f)(x, y=1) for x in lst))
+
+        # Those calls have all used the same pool instance:
+        if mp is not None:
+            assert_true(managed_pool is p._pool)
+
+    # As soon as we exit the context manager block, the pool is terminated and
+    # no longer referenced from the parallel object:
+    assert_true(p._pool is None)
+
+    # It's still possible to use the parallel instance in non-managed mode:
+    assert_equal(expected, p(delayed(f)(x, y=1) for x in lst))
+    assert_true(p._pool is None)
+
+
+def test_parallel_context_manager():
+    for backend in ['multiprocessing', 'threading']:
+        yield check_parallel_context_manager, backend
 
 
 def test_parallel_pickling():
@@ -167,10 +200,17 @@ def test_parallel_pickling():
     """
     def g(x):
         return x ** 2
-    nose.tools.assert_raises(PickleError,
-                             Parallel(),
-                             (delayed(g)(x) for x in range(10))
-                            )
+
+    try:
+        # pickling a local function always fail but the exception
+        # raised is a PickleError for python <= 3.4 and AttributeError
+        # for python >= 3.5
+        pickle.dumps(g)
+    except Exception as exc:
+        exception_class = exc.__class__
+
+    assert_raises(exception_class, Parallel(),
+                  (delayed(g)(x) for x in range(10)))
 
 
 def test_error_capture():
@@ -179,31 +219,52 @@ def test_error_capture():
     if mp is not None:
         # A JoblibException will be raised only if there is indeed
         # multiprocessing
-        nose.tools.assert_raises(JoblibException,
-                                Parallel(n_jobs=2),
-                    [delayed(division)(x, y) for x, y in zip((0, 1), (1, 0))],
-                        )
-        nose.tools.assert_raises(WorkerInterrupt,
-                                    Parallel(n_jobs=2),
-                        [delayed(interrupt_raiser)(x) for x in (1, 0)],
-                            )
+        assert_raises(JoblibException, Parallel(n_jobs=2),
+                      [delayed(division)(x, y)
+                       for x, y in zip((0, 1), (1, 0))])
+        assert_raises(WorkerInterrupt, Parallel(n_jobs=2),
+                      [delayed(interrupt_raiser)(x) for x in (1, 0)])
+
+        # Try again with the context manager API
+        with Parallel(n_jobs=2) as parallel:
+            assert_true(parallel._pool is not None)
+
+            assert_raises(JoblibException, parallel,
+                          [delayed(division)(x, y)
+                           for x, y in zip((0, 1), (1, 0))])
+
+            # The managed pool should still be available and be in a working
+            # state despite the previously raised (and caught) exception
+            assert_true(parallel._pool is not None)
+            assert_equal([f(x, y=1) for x in range(10)],
+                         parallel(delayed(f)(x, y=1) for x in range(10)))
+
+            assert_raises(WorkerInterrupt, parallel,
+                          [delayed(interrupt_raiser)(x) for x in (1, 0)])
+
+            # The pool should still be available despite the exception
+            assert_true(parallel._pool is not None)
+            assert_equal([f(x, y=1) for x in range(10)],
+                         parallel(delayed(f)(x, y=1) for x in range(10)))
+
+        # Check that the inner pool has been terminated when exiting the
+        # context manager
+        assert_true(parallel._pool is None)
     else:
-        nose.tools.assert_raises(KeyboardInterrupt,
-                                    Parallel(n_jobs=2),
-                        [delayed(interrupt_raiser)(x) for x in (1, 0)],
-                            )
-    nose.tools.assert_raises(ZeroDivisionError,
-                                Parallel(n_jobs=2),
-                    [delayed(division)(x, y) for x, y in zip((0, 1), (1, 0))],
-                        )
+        assert_raises(KeyboardInterrupt, Parallel(n_jobs=2),
+                      [delayed(interrupt_raiser)(x) for x in (1, 0)])
+
+    # wrapped exceptions should inherit from the class of the original
+    # exception to make it easy to catch them
+    assert_raises(ZeroDivisionError, Parallel(n_jobs=2),
+                  [delayed(division)(x, y) for x, y in zip((0, 1), (1, 0))])
     try:
+        # JoblibException wrapping is disabled in sequential mode:
         ex = JoblibException()
         Parallel(n_jobs=1)(
-                    delayed(division)(x, y) for x, y in zip((0, 1), (1, 0)))
-    except Exception:
-        # Cannot use 'except as' to maintain Python 2.5 compatibility
-        ex = sys.exc_info()[1]
-    nose.tools.assert_false(isinstance(ex, JoblibException))
+            delayed(division)(x, y) for x, y in zip((0, 1), (1, 0)))
+    except Exception as ex:
+        assert_false(isinstance(ex, JoblibException))
 
 
 class Counter(object):
@@ -230,16 +291,33 @@ def check_dispatch_one_job(backend):
             queue.append('Produced %i' % i)
             yield i
 
-    Parallel(n_jobs=1, backend=backend)(
+    # disable batching
+    Parallel(n_jobs=1, batch_size=1, backend=backend)(
         delayed(consumer)(queue, x) for x in producer())
-    nose.tools.assert_equal(queue,
-                              ['Produced 0', 'Consumed 0',
-                               'Produced 1', 'Consumed 1',
-                               'Produced 2', 'Consumed 2',
-                               'Produced 3', 'Consumed 3',
-                               'Produced 4', 'Consumed 4',
-                               'Produced 5', 'Consumed 5']
-                               )
+    nose.tools.assert_equal(queue, [
+        'Produced 0', 'Consumed 0',
+        'Produced 1', 'Consumed 1',
+        'Produced 2', 'Consumed 2',
+        'Produced 3', 'Consumed 3',
+        'Produced 4', 'Consumed 4',
+        'Produced 5', 'Consumed 5',
+    ])
+    nose.tools.assert_equal(len(queue), 12)
+
+    # empty the queue for the next check
+    queue[:] = []
+
+    # enable batching
+    Parallel(n_jobs=1, batch_size=4, backend=backend)(
+        delayed(consumer)(queue, x) for x in producer())
+    nose.tools.assert_equal(queue, [
+        # First batch
+        'Produced 0', 'Produced 1', 'Produced 2', 'Produced 3',
+        'Consumed 0', 'Consumed 1', 'Consumed 2', 'Consumed 3',
+
+        # Second batch
+        'Produced 4', 'Produced 5', 'Consumed 4', 'Consumed 5',
+    ])
     nose.tools.assert_equal(len(queue), 12)
 
 
@@ -262,7 +340,7 @@ def check_dispatch_multiprocessing(backend):
             queue.append('Produced %i' % i)
             yield i
 
-    Parallel(n_jobs=2, pre_dispatch=3, backend=backend)(
+    Parallel(n_jobs=2, batch_size=1, pre_dispatch=3, backend=backend)(
         delayed(consumer)(queue, 'any') for _ in producer())
 
     # Only 3 tasks are dispatched out of 6. The 4th task is dispatched only
@@ -281,6 +359,29 @@ def test_dispatch_multiprocessing():
         yield check_dispatch_multiprocessing, backend
 
 
+def test_batching_auto_threading():
+    # batching='auto' with the threading backend leaves the effective batch
+    # size to 1 (no batching) as it has been found to never be beneficial with
+    # this low-overhead backend.
+    p = Parallel(n_jobs=2, batch_size='auto', backend='threading')
+    p(delayed(id)(i) for i in range(5000))  # many very fast tasks
+    assert_equal(p._effective_batch_size, 1)
+
+
+def test_batching_auto_multiprocessing():
+    p = Parallel(n_jobs=2, batch_size='auto', backend='multiprocessing')
+    p(delayed(id)(i) for i in range(5000))  # many very fast tasks
+
+    # When the auto-tuning of the batch size is enabled
+    # size kicks in the following attribute gets updated.
+    assert_true(hasattr(p, '_effective_batch_size'))
+
+    # It should be strictly larger than 1 but as we don't want heisen failures
+    # on clogged CI worker environment be safe and only check that it's a
+    # strictly positive number.
+    assert_true(p._effective_batch_size > 0)
+
+
 def test_exception_dispatch():
     "Make sure that exception raised during dispatch are indeed captured"
     nose.tools.assert_raises(
@@ -288,6 +389,15 @@ def test_exception_dispatch():
             Parallel(n_jobs=2, pre_dispatch=16, verbose=0),
                     (delayed(exception_raiser)(i) for i in range(30)),
             )
+
+
+def test_nested_exception_dispatch():
+    # Ensure TransportableException objects for nested joblib cases gets
+    # propagated.
+    nose.tools.assert_raises(
+        JoblibException,
+        Parallel(n_jobs=2, pre_dispatch=16, verbose=0),
+                (delayed(SafeFunction(exception_raiser))(i) for i in range(30)))
 
 
 def _reload_joblib():
@@ -307,8 +417,8 @@ def test_multiple_spawning():
     # systems that do not support fork
     if not int(os.environ.get('JOBLIB_MULTIPROCESSING', 1)):
         raise nose.SkipTest()
-    nose.tools.assert_raises(ImportError, Parallel(n_jobs=2),
-                    [delayed(_reload_joblib)() for i in range(10)])
+    nose.tools.assert_raises(ImportError, Parallel(n_jobs=2, pre_dispatch='all'),
+                             [delayed(_reload_joblib)() for i in range(10)])
 
 
 ###############################################################################
@@ -327,11 +437,68 @@ def test_safe_function():
     nose.tools.assert_raises(JoblibException, safe_division, 1, 0)
 
 
-def test_pre_dispatch_race_condition():
-    # Check that using pre-dispatch does not yield a race condition on the
+def test_invalid_batch_size():
+    assert_raises(ValueError, Parallel, batch_size=0)
+    assert_raises(ValueError, Parallel, batch_size=-1)
+    assert_raises(ValueError, Parallel, batch_size=1.42)
+
+
+def check_same_results(params):
+    n_tasks = params.pop('n_tasks')
+    expected = [square(i) for i in range(n_tasks)]
+    results = Parallel(**params)(delayed(square)(i) for i in range(n_tasks))
+    assert_equal(results, expected)
+
+
+def test_dispatch_race_condition():
+    # Check that using (async-)dispatch does not yield a race condition on the
     # iterable generator that is not thread-safe natively.
-    # this is a non-regression test for the "Pool seems closed" class of error
-    for n_tasks in [2, 10, 20]:
-        for n_jobs in [2, 4]:
-            Parallel(n_jobs=n_jobs, pre_dispatch="2 * n_jobs")(
-                delayed(square)(i) for i in range(n_tasks))
+    # This is a non-regression test for the "Pool seems closed" class of error
+    yield check_same_results, dict(n_tasks=2, n_jobs=2, pre_dispatch="all")
+    yield check_same_results, dict(n_tasks=2, n_jobs=2, pre_dispatch="n_jobs")
+    yield check_same_results, dict(n_tasks=10, n_jobs=2, pre_dispatch="n_jobs")
+    yield check_same_results, dict(n_tasks=517, n_jobs=2,
+                                   pre_dispatch="n_jobs")
+    yield check_same_results, dict(n_tasks=10, n_jobs=2, pre_dispatch="n_jobs")
+    yield check_same_results, dict(n_tasks=10, n_jobs=4, pre_dispatch="n_jobs")
+    yield check_same_results, dict(n_tasks=25, n_jobs=4, batch_size=1)
+    yield check_same_results, dict(n_tasks=25, n_jobs=4, batch_size=1,
+                                   pre_dispatch="all")
+    yield check_same_results, dict(n_tasks=25, n_jobs=4, batch_size=7)
+    yield check_same_results, dict(n_tasks=10, n_jobs=4,
+                                   pre_dispatch="2*n_jobs")
+
+
+def test_default_mp_context():
+    p = Parallel(n_jobs=2, backend='multiprocessing')
+    if sys.version_info >= (3, 4):
+        # Under Python 3.4+ use the forkserver context under non-windows
+        # platforms
+        if sys.platform == 'win32':
+            assert_equal(p._mp_context.get_start_method(), 'spawn')
+        else:
+            assert_equal(p._mp_context.get_start_method(), 'forkserver')
+    else:
+        assert_equal(p._mp_context, None)
+
+
+@with_numpy
+def test_no_blas_crash_or_freeze_with_multiprocessing():
+    if sys.version_info < (3, 4):
+        raise nose.SkipTest('multiprocessing can cause BLAS freeze on'
+                            ' old Python')
+    # Check that on recent Python version, the forkserver start method can make
+    # it possible to use multiprocessing in conjunction of any BLAS
+    # implementation that happens to be used by numpy with causing a freeze or
+    # a crash
+    rng = np.random.RandomState(42)
+
+    # call BLAS DGEMM to force the initialization of the internal thread-pool
+    # in the main process
+    a = rng.randn(1000, 1000)
+    np.dot(a, a.T)
+
+    # check that the internal BLAS thread-pool is not in an inconsistent state
+    # in the worker processes managed by multiprocessing
+    Parallel(n_jobs=2, backend='multiprocessing')(
+        delayed(np.dot)(a, a.T) for i in range(2))

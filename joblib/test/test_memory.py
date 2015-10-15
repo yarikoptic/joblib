@@ -18,9 +18,9 @@ import time
 
 import nose
 
-from ..memory import Memory, MemorizedFunc, NotMemorizedFunc, MemorizedResult
-from ..memory import NotMemorizedResult, _FUNCTION_HASHES
-from .common import with_numpy, np
+from joblib.memory import Memory, MemorizedFunc, NotMemorizedFunc, MemorizedResult
+from joblib.memory import NotMemorizedResult, _FUNCTION_HASHES
+from joblib.test.common import with_numpy, np
 
 
 ###############################################################################
@@ -225,6 +225,10 @@ def test_memory_name_collision():
     with warnings.catch_warnings(record=True) as w:
         # Cause all warnings to always be triggered.
         warnings.simplefilter("always")
+        # This is a temporary workaround until we get rid of
+        # inspect.getargspec, see
+        # https://github.com/joblib/joblib/issues/247
+        warnings.simplefilter("ignore", DeprecationWarning)
         a(1)
         b(1)
 
@@ -245,6 +249,10 @@ def test_memory_warning_lambda_collisions():
     with warnings.catch_warnings(record=True) as w:
         # Cause all warnings to always be triggered.
         warnings.simplefilter("always")
+        # This is a temporary workaround until we get rid of
+        # inspect.getargspec, see
+        # https://github.com/joblib/joblib/issues/247
+        warnings.simplefilter("ignore", DeprecationWarning)
         nose.tools.assert_equal(0, a(0))
         nose.tools.assert_equal(2, b(1))
         nose.tools.assert_equal(1, a(1))
@@ -272,6 +280,10 @@ def test_memory_warning_collision_detection():
     with warnings.catch_warnings(record=True) as w:
         # Cause all warnings to always be triggered.
         warnings.simplefilter("always")
+        # This is a temporary workaround until we get rid of
+        # inspect.getargspec, see
+        # https://github.com/joblib/joblib/issues/247
+        warnings.simplefilter("ignore", DeprecationWarning)
         a1(1)
         b1(1)
         a1(0)
@@ -659,3 +671,8 @@ def test_memory_in_memory_function_code_change():
         _function_to_cache.__code__ = _product.__code__
         nose.tools.assert_equal(f(1, 2), 2)
         nose.tools.assert_equal(f(1, 2), 2)
+
+
+def test_clear_memory_with_none_cachedir():
+    mem = Memory(cachedir=None)
+    mem.clear()

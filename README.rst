@@ -1,6 +1,6 @@
 The homepage of joblib with user documentation is located on:
 
-http://packages.python.org/joblib/
+https://pythonhosted.org/joblib/
 
 Getting the latest code
 =========================
@@ -21,9 +21,9 @@ As any Python packages, to install joblib, simply do::
 
 in the source code directory.
 
-Joblib has no other mandatory dependency than Python (at least version
-2.6). Numpy (at least version 1.3) is an optional dependency for array
-manipulation.
+Joblib has no other mandatory dependency than Python (supported
+versions are 2.6+ and 3.3+). Numpy (at least version 1.6.1) is an
+optional dependency for array manipulation.
 
 Workflow to contribute
 =========================
@@ -33,7 +33,7 @@ To contribute to joblib, first create an account on `github
 <http://github.com/joblib/joblib>`_ to have you own repository,
 clone it using 'git clone' on the computers where you want to work. Make
 your changes in your clone, push them to your github account, test them
-on several computer, and when you are happy with them, send a pull
+on several computers, and when you are happy with them, send a pull
 request to the main repository.
 
 Running the test suite
@@ -46,10 +46,15 @@ Run the test suite using::
 
 from the root of the project.
 
-.. image:: https://secure.travis-ci.org/joblib/joblib.png
-   :target: https://secure.travis-ci.org/joblib/joblib
-   :alt: Build status
-   :align: right
+|Travis| |AppVeyor|
+
+.. |Travis| image:: https://travis-ci.org/joblib/joblib.svg?branch=master
+   :target: https://travis-ci.org/joblib/joblib
+   :alt: Travis build status
+
+.. |AppVeyor| image:: https://ci.appveyor.com/api/projects/status/github/joblib/joblib?branch=master&svg=true
+   :target: https://ci.appveyor.com/project/joblib-ci/joblib/history
+   :alt: AppVeyor build status
 
 
 Building the docs

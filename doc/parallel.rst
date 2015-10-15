@@ -78,12 +78,57 @@ parameter of the :class:`Parallel` constructor:
 
 .. _`with nogil`:: http://docs.cython.org/src/userguide/external_C_code.html#acquiring-and-releasing-the-gil
 
+
+Reusing a pool of workers
+=========================
+
+Some algorithms require to make several consecutive calls to a parallel
+function interleaved with processing of the intermediate results. Calling
+``Parallel`` several times in a loop is sub-optimal because it will create and
+destroy a pool of workers (threads or processes) several times which can cause
+a significant overhead.
+
+For this case it is more efficient to use the context manager API of the
+``Parallel`` class to re-use the same pool of workers for several calls to
+the ``Parallel`` object::
+
+    >>> with Parallel(n_jobs=2) as parallel:
+    ...    accumulator = 0.
+    ...    n_iter = 0
+    ...    while accumulator < 1000:
+    ...        results = parallel(delayed(sqrt)(accumulator + i ** 2)
+    ...                           for i in range(5))
+    ...        accumulator += sum(results)  # synchronization barrier
+    ...        n_iter += 1
+    ...
+    >>> (accumulator, n_iter)                            # doctest: +ELLIPSIS
+    (1136.596..., 14)
+
 .. include:: parallel_numpy.rst
 
 
+Bad interaction of multiprocessing and third-party libraries
+============================================================
+
+Prior to Python 3.4, the ``'multiprocessing'`` backend of joblib can only use
+the ``fork`` strategy to create worker processes under non-Windows systems.
+This can cause some third-party libraries to crash or freeze. Such libraries
+include as Apple vecLib / Accelerate (used by NumPy under OSX), some old
+version of OpenBLAS (prior to 0.2.10) or the OpenMP runtime implementation from
+GCC.
+
+To avoid this problem ``joblib.Parallel`` uses the ``'forkserver'`` start
+method by default on Python 3.4 and later. If necessary this behavior can be
+changed by setting the ``JOBLIB_START_METHOD`` environment variable back to the
+unsafe ``'fork'`` method. You can read more on this topic in the
+`multiprocessing documentation
+<https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods>`_.
+
+Under Windows the ``fork`` system call does not exist at all so this problem
+does not exist (but multiprocessing has more overhead).
+
 `Parallel` reference documentation
-===================================
+==================================
 
 .. autoclass:: joblib.Parallel
    :members: auto
-

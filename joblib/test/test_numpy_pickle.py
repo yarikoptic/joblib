@@ -8,14 +8,19 @@ import copy
 import shutil
 import os
 import random
+import sys
+import re
+import tempfile
+import glob
 
 import nose
 
-from .common import np, with_numpy
+from joblib.test.common import np, with_numpy
 
 # numpy_pickle is not a drop-in replacement of pickle, as it takes
 # filenames instead of open files as arguments.
-from .. import numpy_pickle
+from joblib import numpy_pickle
+from joblib.test import data
 
 ###############################################################################
 # Define a list of standard types.
@@ -204,8 +209,27 @@ def test_memmap_persistence():
     filename = env['filename'] + str(random.randint(0, 1000))
     numpy_pickle.dump(a, filename)
     b = numpy_pickle.load(filename, mmap_mode='r')
-    if [int(x) for x in np.__version__.split('.', 2)[:2]] >= [1, 3]:
-        nose.tools.assert_true(isinstance(b, np.memmap))
+
+    nose.tools.assert_true(isinstance(b, np.memmap))
+
+
+@with_numpy
+def test_memmap_persistence_mixed_dtypes():
+    # loading datastructures that have sub-arrays with dtype=object
+    # should not prevent memmaping on fixed size dtype sub-arrays.
+    rnd = np.random.RandomState(0)
+    a = rnd.random_sample(10)
+    b = np.array([1, 'b'], dtype=object)
+    construct = (a, b)
+    filename = env['filename'] + str(random.randint(0, 1000))
+    numpy_pickle.dump(construct, filename)
+    a_clone, b_clone = numpy_pickle.load(filename, mmap_mode='r')
+
+    # the floating point array has been memory mapped
+    nose.tools.assert_true(isinstance(a_clone, np.memmap))
+
+    # the object-dtype array has been loaded in memory
+    nose.tools.assert_false(isinstance(b_clone, np.memmap))
 
 
 @with_numpy
@@ -230,6 +254,103 @@ def test_z_file():
     with open(filename, 'rb') as f:
         data_read = numpy_pickle.read_zfile(f)
     nose.tools.assert_equal(data, data_read)
+
+
+@with_numpy
+def test_compressed_pickle_dump_and_load():
+    expected_list = [np.arange(5, dtype=np.int64),
+                     np.arange(5, dtype=np.float64),
+                     # .tostring actually returns bytes and is a
+                     # compatibility alias for .tobytes which was
+                     # added in 1.9.0
+                     np.arange(256, dtype=np.uint8).tostring(),
+                     u"C'est l'\xe9t\xe9 !"]
+
+    with tempfile.NamedTemporaryFile(suffix='.gz', dir=env['dir']) as f:
+        fname = f.name
+
+    try:
+        numpy_pickle.dump(expected_list, fname, compress=1)
+        result_list = numpy_pickle.load(fname)
+        for result, expected in zip(result_list, expected_list):
+            if isinstance(expected, np.ndarray):
+                nose.tools.assert_equal(result.dtype, expected.dtype)
+                np.testing.assert_equal(result, expected)
+            else:
+                nose.tools.assert_equal(result, expected)
+    finally:
+        os.remove(fname)
+
+
+def _check_pickle(filename, expected_list):
+    """Helper function to test joblib pickle content
+
+    Note: currently only pickles containing an iterable are supported
+    by this function.
+    """
+    version_match = re.match(r'.+py(\d)(\d).+', filename)
+    py_version_used_for_writing = int(version_match.group(1))
+    py_version_used_for_reading = sys.version_info[0]
+
+    py_version_to_default_pickle_protocol = {2: 2, 3: 3}
+    pickle_reading_protocol = py_version_to_default_pickle_protocol.get(
+        py_version_used_for_reading, 4)
+    pickle_writing_protocol = py_version_to_default_pickle_protocol.get(
+        py_version_used_for_writing, 4)
+    if pickle_reading_protocol >= pickle_writing_protocol:
+        try:
+            result_list = numpy_pickle.load(filename)
+            for result, expected in zip(result_list, expected_list):
+                if isinstance(expected, np.ndarray):
+                    nose.tools.assert_equal(result.dtype, expected.dtype)
+                    np.testing.assert_equal(result, expected)
+                else:
+                    nose.tools.assert_equal(result, expected)
+        except Exception as exc:
+            # When trying to read with python 3 a pickle generated
+            # with python 2 we expect a user-friendly error
+            if (py_version_used_for_reading == 3 and
+                    py_version_used_for_writing == 2):
+                nose.tools.assert_true(isinstance(exc, ValueError))
+                message = ('You may be trying to read with '
+                           'python 3 a joblib pickle generated with python 2.')
+                nose.tools.assert_true(message in str(exc))
+            else:
+                raise
+    else:
+        # Pickle protocol used for writing is too high. We expect a
+        # "unsupported pickle protocol" error message
+        try:
+            numpy_pickle.load(filename)
+            raise AssertionError('Numpy pickle loading should '
+                                 'have raised a ValueError exception')
+        except ValueError as e:
+            message = 'unsupported pickle protocol: {0}'.format(
+                pickle_writing_protocol)
+            nose.tools.assert_true(message in str(e.args))
+
+
+@with_numpy
+def test_joblib_pickle_across_python_versions():
+    expected_list = [np.arange(5, dtype=np.int64),
+                     np.arange(5, dtype=np.float64),
+                     np.array([1, 'abc', {'a': 1, 'b': 2}]),
+                     # .tostring actually returns bytes and is a
+                     # compatibility alias for .tobytes which was
+                     # added in 1.9.0
+                     np.arange(256, dtype=np.uint8).tostring(),
+                     u"C'est l'\xe9t\xe9 !"]
+
+    # Testing all the *.gz and *.pkl (compressed and non compressed
+    # pickles) in joblib/test/data. These pickles were generated by
+    # the joblib/test/data/create_numpy_pickle.py script for the
+    # relevant python, joblib and numpy versions.
+    test_data_dir = os.path.dirname(os.path.abspath(data.__file__))
+    data_filenames = glob.glob(os.path.join(test_data_dir, '*.gz'))
+    data_filenames += glob.glob(os.path.join(test_data_dir, '*.pkl'))
+
+    for fname in data_filenames:
+        _check_pickle(fname, expected_list)
 
 ################################################################################
 # Test dumping array subclasses
