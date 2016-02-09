@@ -1,3 +1,9 @@
+joblib (0.9.4-1) unstable; urgency=medium
+
+  * New (primarily bugfix) upstream release
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Tue, 09 Feb 2016 10:09:59 -0500
+
 joblib (0.9.3-1) unstable; urgency=medium
 
   * Fresh bugfix upstream release
