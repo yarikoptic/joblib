@@ -1,6 +1,43 @@
 Latest changes
 ===============
 
+Release 0.9.4
+-------------
+
+Olivier Grisel
+
+    FIX a race condition that could cause a joblib.Parallel to hang
+    when collecting the result of a job that triggers an exception.
+    https://github.com/joblib/joblib/pull/296
+
+Olivier Grisel
+
+    FIX a bug that caused joblib.Parallel to wrongly reuse previously
+    memmapped arrays instead of creating new temporary files.
+    https://github.com/joblib/joblib/pull/294 for more details.
+
+Loïc Estève
+
+    FIX for raising non inheritable exceptions in a Parallel call. See
+    https://github.com/joblib/joblib/issues/269 for more details.
+
+Alexandre Abadie
+
+    FIX joblib.hash error with mixed types sets and dicts containing mixed
+    types keys when using Python 3.
+    see https://github.com/joblib/joblib/issues/254
+
+Loïc Estève
+
+    FIX joblib.dump/load for big numpy arrays with dtype=object. See
+    https://github.com/joblib/joblib/issues/220 for more details.
+
+Loïc Estève
+
+    FIX joblib.Parallel hanging when used with an exhausted
+    iterator. See https://github.com/joblib/joblib/issues/292 for more
+    details.
+
 Release 0.9.3
 -------------
 

@@ -21,6 +21,8 @@ import nose
 from joblib.memory import Memory, MemorizedFunc, NotMemorizedFunc, MemorizedResult
 from joblib.memory import NotMemorizedResult, _FUNCTION_HASHES
 from joblib.test.common import with_numpy, np
+from joblib.testing import assert_raises_regex
+from joblib._compat import PY3_OR_LATER
 
 
 ###############################################################################
@@ -110,7 +112,7 @@ def test_memory_integration():
             # To smoke-test verbosity, we capture stdout
             orig_stdout = sys.stdout
             orig_stderr = sys.stdout
-            if sys.version_info[0] == 3:
+            if PY3_OR_LATER:
                 sys.stderr = io.StringIO()
                 sys.stderr = io.StringIO()
             else:
@@ -590,7 +592,7 @@ def test_memory_file_modification():
     f = mem.cache(tmp.f)
     # Capture sys.stdout to count how many time f is called
     orig_stdout = sys.stdout
-    if sys.version_info[0] == 3:
+    if PY3_OR_LATER:
         my_stdout = io.StringIO()
     else:
         my_stdout = io.BytesIO()
@@ -676,3 +678,48 @@ def test_memory_in_memory_function_code_change():
 def test_clear_memory_with_none_cachedir():
     mem = Memory(cachedir=None)
     mem.clear()
+
+if PY3_OR_LATER:
+    exec("""
+def func_with_kwonly_args(a, b, *, kw1='kw1', kw2='kw2'):
+    return a, b, kw1, kw2
+
+def func_with_signature(a: int, b: float) -> float:
+    return a + b
+""")
+
+    def test_memory_func_with_kwonly_args():
+        mem = Memory(cachedir=env['dir'], verbose=0)
+        func_cached = mem.cache(func_with_kwonly_args)
+
+        nose.tools.assert_equal(func_cached(1, 2, kw1=3), (1, 2, 3, 'kw2'))
+
+        # Making sure that providing a keyword-only argument by
+        # position raises an exception
+        assert_raises_regex(
+            ValueError,
+            "Keyword-only parameter 'kw1' was passed as positional parameter",
+            func_cached,
+            1, 2, 3, {'kw2': 4})
+
+        # Keyword-only parameter passed by position with cached call
+        # should still raise ValueError
+        func_cached(1, 2, kw1=3, kw2=4)
+
+        assert_raises_regex(
+            ValueError,
+            "Keyword-only parameter 'kw1' was passed as positional parameter",
+            func_cached,
+            1, 2, 3, {'kw2': 4})
+
+        # Test 'ignore' parameter
+        func_cached = mem.cache(func_with_kwonly_args, ignore=['kw2'])
+        nose.tools.assert_equal(func_cached(1, 2, kw1=3, kw2=4), (1, 2, 3, 4))
+        nose.tools.assert_equal(func_cached(1, 2, kw1=3, kw2='ignored'), (1, 2, 3, 4))
+
+
+    def test_memory_func_with_signature():
+        mem = Memory(cachedir=env['dir'], verbose=0)
+        func_cached = mem.cache(func_with_signature)
+
+        nose.tools.assert_equal(func_cached(1, 2.), 3.)

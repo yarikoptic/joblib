@@ -11,11 +11,14 @@ import shutil
 import nose
 import tempfile
 import functools
+import sys
 
 from joblib.func_inspect import filter_args, get_func_name, get_func_code
 from joblib.func_inspect import _clean_win_chars, format_signature
 from joblib.memory import Memory
 from joblib.test.common import with_numpy
+from joblib.testing import assert_raises_regex
+from joblib._compat import PY3_OR_LATER
 
 
 ###############################################################################
@@ -154,15 +157,46 @@ def test_func_inspect_errors():
     nose.tools.assert_equal(get_func_code('a'.lower)[1:], (None, -1))
     ff = lambda x: x
     nose.tools.assert_equal(get_func_name(ff, win_characters=False)[-1],
-                                                            '<lambda>')
+                            '<lambda>')
     nose.tools.assert_equal(get_func_code(ff)[1],
-                                    __file__.replace('.pyc', '.py'))
+                            __file__.replace('.pyc', '.py'))
     # Simulate a function defined in __main__
     ff.__module__ = '__main__'
     nose.tools.assert_equal(get_func_name(ff, win_characters=False)[-1],
-                                                            '<lambda>')
+                            '<lambda>')
     nose.tools.assert_equal(get_func_code(ff)[1],
-                                    __file__.replace('.pyc', '.py'))
+                            __file__.replace('.pyc', '.py'))
+
+
+if PY3_OR_LATER:
+    exec("""
+def func_with_kwonly_args(a, b, *, kw1='kw1', kw2='kw2'): pass
+
+def func_with_signature(a: int, b: int) -> None: pass
+""")
+
+    def test_filter_args_python_3():
+        nose.tools.assert_equal(
+            filter_args(func_with_kwonly_args,
+                        [], (1, 2), {'kw1': 3, 'kw2': 4}),
+            {'a': 1, 'b': 2, 'kw1': 3, 'kw2': 4})
+
+        # filter_args doesn't care about keyword-only arguments so you
+        # can pass 'kw1' into *args without any problem
+        assert_raises_regex(
+            ValueError,
+            "Keyword-only parameter 'kw1' was passed as positional parameter",
+            filter_args,
+            func_with_kwonly_args, [], (1, 2, 3), {'kw2': 2})
+
+        nose.tools.assert_equal(
+            filter_args(func_with_kwonly_args, ['b', 'kw2'], (1, 2),
+                        {'kw1': 3, 'kw2': 4}),
+            {'a': 1, 'kw1': 3})
+
+        nose.tools.assert_equal(
+            filter_args(func_with_signature, ['b'], (1, 2)),
+            {'a': 1})
 
 
 def test_bound_methods():

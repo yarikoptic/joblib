@@ -39,14 +39,14 @@ request to the main repository.
 Running the test suite
 =========================
 
-To run the test suite, you need nosetests and the coverage modules.
+To run the test suite, you need the nose and coverage modules.
 Run the test suite using::
 
     nosetests
 
 from the root of the project.
 
-|Travis| |AppVeyor|
+|Travis| |AppVeyor| |Coveralls|
 
 .. |Travis| image:: https://travis-ci.org/joblib/joblib.svg?branch=master
    :target: https://travis-ci.org/joblib/joblib
@@ -56,14 +56,16 @@ from the root of the project.
    :target: https://ci.appveyor.com/project/joblib-ci/joblib/history
    :alt: AppVeyor build status
 
+.. |Coveralls| image:: https://coveralls.io/repos/joblib/joblib/badge.svg?branch=master&service=github
+   :target: https://coveralls.io/github/joblib/joblib?branch=master
+   :alt: Coveralls coverage
 
 Building the docs
 =========================
 
-To build the docs you need to have setuptools and sphinx (>=0.5) installed. 
+To build the docs you need to have setuptools and sphinx (>=0.5) installed.
 Run the command::
-
-    python setup.py build_sphinx
+  python setup.py build_sphinx
 
 The docs are built in the build/sphinx/html directory.
 
@@ -111,15 +113,15 @@ joblib is **BSD-licenced** (3 clause):
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions are met:
 
-    * Redistributions of source code must retain the above copyright notice, 
+    * Redistributions of source code must retain the above copyright notice,
       this list of conditions and the following disclaimer.
 
     * Redistributions in binary form must reproduce the above copyright notice,
       this list of conditions and the following disclaimer in the documentation
       and/or other materials provided with the distribution.
 
-    * Neither the name of Gael Varoquaux. nor the names of other joblib 
-      contributors may be used to endorse or promote products derived from 
+    * Neither the name of Gael Varoquaux. nor the names of other joblib
+      contributors may be used to endorse or promote products derived from
       this software without specific prior written permission.
 
     **This software is provided by the copyright holders and contributors
@@ -134,6 +136,3 @@ joblib is **BSD-licenced** (3 clause):
     (including negligence or otherwise) arising in any way out of the use
     of this software, even if advised of the possibility of such
     damage.**
-
-
-
