@@ -1,0 +1,13 @@
+From: Yaroslav Halchenko <debian@onerussian.com>
+Subject: BF: allow for _ in the filename for mtrand.so
+  on Debian systems it is mtrand.x86_64-linux-gnu.so since arch is x86_64
+
+--- a/joblib/test/test_format_stack.py
++++ b/joblib/test/test_format_stack.py
+@@ -80,5 +80,5 @@ def test_format_exc_with_compiled_code()
+                                    exc_traceback, context=10)
+         # The name of the extension can be something like
+         # mtrand.cpython-33m.so
+-        pattern = 'mtrand[a-z0-9.-]*\.(so|pyd)'
++        pattern = 'mtrand[a-z0-9._-]*\.(so|pyd)'
+         assert_true(re.search(pattern, formatted_exc))
