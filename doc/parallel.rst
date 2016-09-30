@@ -130,8 +130,62 @@ You can read more on this topic in the `multiprocessing documentation
 Under Windows the ``fork`` system call does not exist at all so this problem
 does not exist (but multiprocessing has more overhead).
 
+
+Custom backend API (experimental)
+=================================
+
+.. versionadded:: 0.10
+
+.. warning:: The custom backend API is experimental and subject to change
+    without going through a deprecation cycle.
+
+User can provide their own implementation of a parallel processing backend in
+addition to the ``'multiprocessing'`` and ``'threading'`` backends provided by
+default. A backend is registered with the
+:func:`joblib.register_parallel_backend` function by passing a name and a
+backend factory.
+
+The backend factory can be any callable that returns an instance of
+``ParallelBackendBase``. Please refer to the `default backends source code`_ as
+a reference if you want to implement your own custom backend.
+
+.. _`default backends source code`: https://github.com/joblib/joblib/blob/master/joblib/_parallel_backends.py
+
+Note that it is possible to register a backend class that has some mandatory
+constructor parameters such as the network address and connection credentials
+for a remote cluster computing service::
+
+    class MyCustomBackend(ParallelBackendBase):
+
+        def __init__(self, endpoint, api_key):
+           self.endpoint = endpoint
+           self.api_key = api_key
+
+        ...
+        # Do something with self.endpoint and self.api_key somewhere in
+        # one of the method of the class
+
+    register_parallel_backend('custom', MyCustomBackend)
+
+The connection parameters can then be passed to the
+:func:`joblib.parallel_backend` context manager::
+
+    with parallel_backend('custom', endpoint='http://compute', api_key='42'):
+        Parallel()(delayed(some_function)(i) for i in range(10))
+
+Using the context manager can be helpful when using a third-party library that
+uses :class:`joblib.Parallel` internally while not exposing the ``backend``
+argument in its own API.
+
+
 `Parallel` reference documentation
 ==================================
 
 .. autoclass:: joblib.Parallel
    :members: auto
+
+.. autofunction:: joblib.delayed
+
+.. autofunction:: joblib.register_parallel_backend
+
+.. autofunction:: joblib.parallel_backend

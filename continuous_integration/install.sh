@@ -20,7 +20,7 @@ print_conda_requirements() {
     #   - for scikit-learn, SCIKIT_LEARN_VERSION is used
     TO_INSTALL_ALWAYS="pip nose"
     REQUIREMENTS="$TO_INSTALL_ALWAYS"
-    TO_INSTALL_MAYBE="python numpy"
+    TO_INSTALL_MAYBE="python numpy flake8"
     for PACKAGE in $TO_INSTALL_MAYBE; do
         # Capitalize package name and add _VERSION
         PACKAGE_VERSION_VARNAME="${PACKAGE^^}_VERSION"
@@ -73,6 +73,11 @@ if [ -z "$NUMPY_VERSION" ]; then
     # setup.cfg so doing it the hacky way ...
     cat setup.cfg | grep -v 'with-doctest=' > setup.cfg.new
     mv setup.cfg{.new,}
+else
+    # We want to ensure no memory copies are performed only when numpy is
+    # installed. This also ensures that we don't keep a strong dependency on
+    # memory_profiler.
+    pip install memory_profiler
 fi
 
 if [[ "$COVERAGE" == "true" ]]; then

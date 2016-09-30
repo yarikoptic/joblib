@@ -1,6 +1,68 @@
 Latest changes
 ===============
 
+Release 0.10.2
+--------------
+
+Loïc Estève
+
+    FIX a bug in stack formatting when the error happens in a compiled
+    extension. See https://github.com/joblib/joblib/pull/382 for more
+    details.
+
+Vincent Latrouite
+
+    FIX a bug in the constructor of BinaryZlibFile that would throw an
+    exception when passing unicode filename (Python 2 only).
+    See https://github.com/joblib/joblib/pull/384 for more details.
+
+Olivier Grisel
+
+    Expose :class:`joblib.parallel.ParallelBackendBase` and
+    :class:`joblib.parallel.AutoBatchingMixin` in the public API to
+    make them officially re-usable by backend implementers.
+
+
+Release 0.10.0
+--------------
+
+Alexandre Abadie
+
+    ENH: joblib.dump/load now accept file-like objects besides filenames.
+    https://github.com/joblib/joblib/pull/351 for more details.
+
+Niels Zeilemaker and Olivier Grisel
+
+    Refactored joblib.Parallel to enable the registration of custom
+    computational backends.
+    https://github.com/joblib/joblib/pull/306
+    Note the API to register custom backends is considered experimental
+    and subject to change without deprecation.
+
+Alexandre Abadie
+
+    Joblib pickle format change: joblib.dump always create a single pickle file
+    and joblib.dump/joblib.save never do any memory copy when writing/reading
+    pickle files. Reading pickle files generated with joblib versions prior
+    to 0.10 will be supported for a limited amount of time, we advise to
+    regenerate them from scratch when convenient.
+    joblib.dump and joblib.load also support pickle files compressed using
+    various strategies: zlib, gzip, bz2, lzma and xz. Note that lzma and xz are
+    only available with python >= 3.3.
+    https://github.com/joblib/joblib/pull/260 for more details.
+
+Antony Lee
+
+    ENH: joblib.dump/load now accept pathlib.Path objects as filenames.
+    https://github.com/joblib/joblib/pull/316 for more details.
+
+Olivier Grisel
+
+    Workaround for "WindowsError: [Error 5] Access is denied" when trying to
+    terminate a multiprocessing pool under Windows:
+    https://github.com/joblib/joblib/issues/354
+
+
 Release 0.9.4
 -------------
 
@@ -105,7 +167,7 @@ Olivier Grisel
 
     FIX make it possible to call ``joblib.load(filename, mmap_mode='r')``
     on pickled objects that include a mix of arrays of both
-    memmory memmapable dtypes and object dtype.
+    memory memmapable dtypes and object dtype.
 
 
 Release 0.8.4

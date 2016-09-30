@@ -12,7 +12,8 @@ import numpy as np
 import time
 import tempfile
 from pprint import pprint
-from joblib import parallel, Parallel, delayed
+from joblib import Parallel, delayed
+from joblib._parallel_backends import AutoBatchingMixin
 
 
 def sleep_noop(duration, input_data, output_data_size):
@@ -53,11 +54,10 @@ def bench_short_tasks(task_times, n_jobs=2, batch_size="auto",
         p(delayed(sleep_noop)(max(t, 0), input_data, output_data_size)
           for t in task_times)
         duration = time.time() - t0
-        effective_batch_size = getattr(p, '_effective_batch_size',
+        effective_batch_size = getattr(p._backend, '_effective_batch_size',
                                        p.batch_size)
-
-    print('Completed %d tasks in %0.3fs, final batch_size=%d\n'
-          % (len(task_times), duration, effective_batch_size))
+    print('Completed {} tasks in {:3f}s, final batch_size={}\n'.format(
+        len(task_times), duration, effective_batch_size))
     return duration, effective_batch_size
 
 
@@ -75,8 +75,8 @@ if __name__ == "__main__":
     print("Common benchmark parameters:")
     pprint(bench_parameters)
 
-    parallel.MIN_IDEAL_BATCH_DURATION = 0.2
-    parallel.MAX_IDEAL_BATCH_DURATION = 2
+    AutoBatchingMixin.MIN_IDEAL_BATCH_DURATION = 0.2
+    AutoBatchingMixin.MAX_IDEAL_BATCH_DURATION = 2
 
     # First pair of benchmarks to check that the auto-batching strategy is
     # stable (do not change the batch size too often) in the presence of large
