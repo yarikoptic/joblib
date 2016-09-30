@@ -1,6 +1,8 @@
 joblib (0.10.2-1) unstable; urgency=medium
 
   * Fresh upstream release
+  * debian/control
+    - debian policy 3.9.8
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Thu, 29 Sep 2016 21:06:40 -0400
 

@@ -5,7 +5,7 @@ Maintainer: Yaroslav Halchenko <debian@onerussian.com>
 Build-Depends: debhelper (>= 7.0.50~),
                python-all (>= 2.5), python-setuptools(>= 0.6), python-nose, python-numpy,
                python3-all (>= 2.5), python3-setuptools(>= 0.6), python3-nose, python3-numpy,
-Standards-Version: 3.9.6
+Standards-Version: 3.9.8
 Homepage: http://packages.python.org/joblib/
 X-Python-Version: >=2.6
 X-Python3-Version: >=3.3
