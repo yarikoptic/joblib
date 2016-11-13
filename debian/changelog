@@ -1,3 +1,9 @@
+joblib (0.10.3-1) unstable; urgency=medium
+
+  * Fresh upstream release
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Sun, 13 Nov 2016 18:50:18 -0500
+
 joblib (0.10.2-1) unstable; urgency=medium
 
   * Fresh upstream release
