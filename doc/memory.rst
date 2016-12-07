@@ -205,7 +205,7 @@ Getting a reference to the cache can be done using the
 
     >>> result = g.call_and_shelve(4)
     A long-running calculation, with parameter 4
-    >>> result  #doctest: +ELLIPSIS 
+    >>> result  #doctest: +ELLIPSIS
     MemorizedResult(cachedir="...", func="g...", argument_hash="...")
 
 Once computed, the output of `g` is stored on disk, and deleted from
@@ -254,7 +254,7 @@ Gotchas
     ...     print('Running func(%s)' % x)
 
     >>> func2 = func
-    
+
     >>> @memory.cache
     ... def func(x):
     ...     print('Running a different func(%s)' % x)
@@ -297,7 +297,7 @@ Gotchas
 
 * **lambda functions**
 
-  Beware that with Python 2.6 lambda functions cannot be separated out::
+  Beware that with Python 2.7 lambda functions cannot be separated out::
 
     >>> def my_print(x):
     ...     print(x)
@@ -324,26 +324,65 @@ Gotchas
     >>> print(sin(0))
     0.0
 
-* **caching methods**: you cannot decorate a method at class definition,
-  because when the class is instantiated, the first argument (self) is
-  *bound*, and no longer accessible to the `Memory` object. The following
-  code won't work::
+* **caching methods: memory is designed for pure functions and it is
+  not recommended to use it for methods**. If you want to use cache
+  inside a class the recommended pattern is to cache a pure function
+  and use the cached function inside your class, i.e. something like
+  this::
+
+    @mem.cache
+    def compute_func(arg1, arg2, arg3):
+        # long computation
+        return result
+
 
     class Foo(object):
-
-        @mem.cache  # WRONG
-        def method(self, args):
-	    pass
-
-  The right way to do this is to decorate at instantiation time::
-
-    class Foo(object):
-
         def __init__(self, args):
-            self.method = mem.cache(self.method)
+            self.data = None
 
-        def method(self, ...):
-	    pass
+        def compute(self):
+            self.data = compute_func(self.arg1, self.arg2, 40)
+
+
+  Using ``Memory`` for methods is not recommended and has some caveats
+  that make it very fragile from a maintenance point of view because
+  it is very easy to forget about these caveats when your software
+  evolves. If you still want to do it (we would be interested about
+  your use case by the way), here are a few known caveats:
+
+  1. you cannot decorate a method at class definition,
+     because when the class is instantiated, the first argument (self) is
+     *bound*, and no longer accessible to the `Memory` object. The
+     following code won't work::
+
+       class Foo(object):
+
+           @mem.cache  # WRONG
+           def method(self, args):
+               pass
+
+     The right way to do this is to decorate at instantiation time::
+
+       class Foo(object):
+
+           def __init__(self, args):
+               self.method = mem.cache(self.method)
+
+           def method(self, ...):
+               pass
+
+  2. The cached method will have ``self`` as one of its
+     arguments. That means that the result will be recomputed if
+     anything with ``self`` changes. For example if ``self.attr`` has
+     changed calling ``self.method`` will recompute the result even if
+     ``self.method`` does not use ``self.attr`` in its body. Another
+     example is changing ``self`` inside the body of
+     ``self.method``. The consequence is that ``self.method`` will
+     create cache that will not be reused in subsequent calls. To
+     alleviate these problems and if you *know* that the result of
+     ``self.method`` does not depend on ``self`` you can use
+     ``self.method = mem.cache(self.method, ignore=['self'])``.
+
 
 Ignoring some arguments
 ------------------------

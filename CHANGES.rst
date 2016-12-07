@@ -1,6 +1,37 @@
 Latest changes
 ===============
 
+master
+------
+
+Alexandre Abadie
+
+    Remove support for python 2.6
+
+Alexandre Abadie
+
+    Remove deprecated `format_signature`, `format_call` and `load_output`
+    functions from Memory API.
+
+Loïc Estève
+
+    Add initial implementation of LRU cache cleaning. You can specify
+    the size limit of a ``Memory`` object via the ``bytes_limit``
+    parameter and then need to clean explicitly the cache via the
+    ``Memory.reduce_size`` method.
+
+Olivier Grisel
+
+    Make the multiprocessing backend work even when the name of the main
+    thread is not the Python default. Thanks to Roman Yurchak for the
+    suggestion.
+
+Karan Desai
+
+    py.test is used to run the tests instead of nosetests.
+    ``python setup.py test`` or ``python setup.py nosetests`` do not work
+    anymore, run ``py.test joblib`` instead.
+
 Release 0.10.3
 --------------
 

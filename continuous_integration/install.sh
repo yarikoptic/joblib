@@ -12,13 +12,13 @@ set -e
 
 print_conda_requirements() {
     # Echo a conda requirement string for example
-    # "pip nose python='.7.3 scikit-learn=*". It has a hardcoded
+    # "pip python=2.7.3 scikit-learn=*". It has a hardcoded
     # list of possible packages to install and looks at _VERSION
     # environment variables to know whether to install a given package and
     # if yes which version to install. For example:
     #   - for numpy, NUMPY_VERSION is used
     #   - for scikit-learn, SCIKIT_LEARN_VERSION is used
-    TO_INSTALL_ALWAYS="pip nose"
+    TO_INSTALL_ALWAYS="pip pytest"
     REQUIREMENTS="$TO_INSTALL_ALWAYS"
     TO_INSTALL_MAYBE="python numpy flake8"
     for PACKAGE in $TO_INSTALL_MAYBE; do
@@ -67,13 +67,7 @@ create_new_conda_env() {
 
 create_new_conda_env
 
-if [ -z "$NUMPY_VERSION" ]; then
-    # We want to disable doctests because they need numpy to run. I
-    # could not find a way to override the with-doctest value in
-    # setup.cfg so doing it the hacky way ...
-    cat setup.cfg | grep -v 'with-doctest=' > setup.cfg.new
-    mv setup.cfg{.new,}
-else
+if [ -n "$NUMPY_VERSION" ]; then
     # We want to ensure no memory copies are performed only when numpy is
     # installed. This also ensures that we don't keep a strong dependency on
     # memory_profiler.
@@ -81,7 +75,7 @@ else
 fi
 
 if [[ "$COVERAGE" == "true" ]]; then
-    pip install coverage coveralls
+    pip install pytest-cov coverage coveralls
 fi
 
 python setup.py install

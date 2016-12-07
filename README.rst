@@ -26,7 +26,7 @@ from any directory or
 from the source directory.
 
 Joblib has no other mandatory dependency than Python (supported
-versions are 2.6+ and 3.3+). Numpy (at least version 1.6.1) is an
+versions are 2.7+ and 3.3+). Numpy (at least version 1.6.1) is an
 optional dependency for array manipulation.
 
 Workflow to contribute
@@ -43,10 +43,10 @@ request to the main repository.
 Running the test suite
 =========================
 
-To run the test suite, you need the nose and coverage modules.
+To run the test suite, you need the pytest and coverage modules.
 Run the test suite using::
 
-    nosetests
+    py.test joblib
 
 from the root of the project.
 
