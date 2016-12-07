@@ -9,13 +9,12 @@ Unit tests for the stack formatting utilities
 import re
 import sys
 
-from nose.tools import assert_true
-
 from joblib.format_stack import safe_repr, _fixed_getframes, format_records
 from joblib.format_stack import format_exc
 from joblib.test.common import with_numpy, np
 
 ###############################################################################
+
 
 class Vicious(object):
     def __repr__(self):
@@ -80,5 +79,5 @@ def test_format_exc_with_compiled_code():
                                    exc_traceback, context=10)
         # The name of the extension can be something like
         # mtrand.cpython-33m.so
-        pattern = 'mtrand[a-z0-9.-]*\.(so|pyd)'
-        assert_true(re.search(pattern, formatted_exc))
+        pattern = 'mtrand[a-z0-9._-]*\.(so|pyd)'
+        assert re.search(pattern, formatted_exc)
