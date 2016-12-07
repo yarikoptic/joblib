@@ -1,3 +1,13 @@
+joblib (0.10.3+git55-g660fe5d-1) unstable; urgency=medium
+
+  * New upstream snapshot from 0.10.2-54-gca8a159 (0.10.2 was
+    released from a feature branch)
+    - should address random build failures (Closes: #846228)
+  * debian/{rules,control}
+    - upstream switched to py.test from nose
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 07 Dec 2016 14:52:19 -0500
+
 joblib (0.10.3-1) unstable; urgency=medium
 
   * Fresh upstream release

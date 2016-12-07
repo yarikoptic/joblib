@@ -22,7 +22,7 @@ override_dh_auto_test: ${PYVERS:%=python-test%} ${PY3VERS:%=python-test%}
 
 python-test%:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-	python$* /usr/bin/nosetests --with-doctest -s -v --exclude test_nested_exception_dispatch joblib;
+	python$* /usr/bin/py.test -s -v joblib;
 else
 	: # Skip unittests due to nocheck
 endif
