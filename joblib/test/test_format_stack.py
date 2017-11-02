@@ -6,6 +6,8 @@ Unit tests for the stack formatting utilities
 # Copyright (c) 2010 Gael Varoquaux
 # License: BSD Style, 3 clauses.
 
+import imp
+import os
 import re
 import sys
 
@@ -60,11 +62,51 @@ def test_format_records():
             assert 'test_format_stack.py in' in fmt_rec
 
         # Check exception stack
-        assert "_raise_exception('a', 42)" in formatted_records[0]
-        assert 'helper(a, b)' in formatted_records[1]
+        arrow_regex = r'^-+>\s+\d+\s+'
+        assert re.search(arrow_regex + "_raise_exception\('a', 42\)",
+                         formatted_records[0],
+                         re.MULTILINE)
+        assert re.search(arrow_regex + r'helper\(a, b\)',
+                         formatted_records[1],
+                         re.MULTILINE)
         assert "a = 'a'" in formatted_records[1]
         assert 'b = 42' in formatted_records[1]
-        assert 'Nope, this can not work' in formatted_records[2]
+        assert re.search(arrow_regex +
+                         "raise ValueError\('Nope, this can not work'\)",
+                         formatted_records[2],
+                         re.MULTILINE)
+
+
+def test_format_records_file_with_less_lines_than_context(tmpdir):
+    # See https://github.com/joblib/joblib/issues/420
+    filename = os.path.join(tmpdir.strpath, 'small_file.py')
+    code_lines = ['def func():', '    1/0']
+    code = '\n'.join(code_lines)
+    open(filename, 'w').write(code)
+
+    small_file = imp.load_source('small_file', filename)
+    try:
+        small_file.func()
+    except ZeroDivisionError:
+        etb = sys.exc_info()[2]
+
+        records = _fixed_getframes(etb, context=10)
+        # Check that if context is bigger than the number of lines in
+        # the file you do not get padding
+        frame, tb_filename, line, func_name, context, _ = records[-1]
+        assert [l.rstrip() for l in context] == code_lines
+
+        formatted_records = format_records(records)
+        # 2 lines for header in the traceback: lines of ...... +
+        # filename with function
+        len_header = 2
+        nb_lines_formatted_records = len(formatted_records[1].splitlines())
+        assert (nb_lines_formatted_records == len_header + len(code_lines))
+        # Check exception stack
+        arrow_regex = r'^-+>\s+\d+\s+'
+        assert re.search(arrow_regex + r'1/0',
+                         formatted_records[1],
+                         re.MULTILINE)
 
 
 @with_numpy

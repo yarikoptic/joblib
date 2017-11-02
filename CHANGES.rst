@@ -1,8 +1,8 @@
 Latest changes
 ===============
 
-master
-------
+Release 0.11
+------------
 
 Alexandre Abadie
 
@@ -28,9 +28,33 @@ Olivier Grisel
 
 Karan Desai
 
-    py.test is used to run the tests instead of nosetests.
+    pytest is used to run the tests instead of nosetests.
     ``python setup.py test`` or ``python setup.py nosetests`` do not work
-    anymore, run ``py.test joblib`` instead.
+    anymore, run ``pytest joblib`` instead.
+
+Loïc Estève
+
+    An instance of ``joblib.ParallelBackendBase`` can be passed into
+    the ``parallel`` argument in ``joblib.Parallel``.
+
+
+Loïc Estève
+
+    Fix handling of memmap objects with offsets greater than
+    mmap.ALLOCATIONGRANULARITY in ``joblib.Parrallel``. See
+    https://github.com/joblib/joblib/issues/451 for more details.
+
+Loïc Estève
+
+    Fix performance regression in ``joblib.Parallel`` with
+    n_jobs=1. See https://github.com/joblib/joblib/issues/483 for more
+    details.
+
+Loïc Estève
+
+    Fix race condition when a function cached with
+    ``joblib.Memory.cache`` was used inside a ``joblib.Parallel``. See
+    https://github.com/joblib/joblib/issues/490 for more details.
 
 Release 0.10.3
 --------------

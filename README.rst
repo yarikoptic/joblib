@@ -1,3 +1,22 @@
+|PyPi| |Travis| |AppVeyor| |Codecov|
+
+.. |Travis| image:: https://travis-ci.org/joblib/joblib.svg?branch=master
+   :target: https://travis-ci.org/joblib/joblib
+   :alt: Travis build status
+
+.. |AppVeyor| image:: https://ci.appveyor.com/api/projects/status/github/joblib/joblib?branch=master&svg=true
+   :target: https://ci.appveyor.com/project/joblib-ci/joblib/history
+   :alt: AppVeyor build status
+
+.. |Codecov| image:: https://codecov.io/gh/joblib/joblib/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/joblib/joblib
+   :alt: Codecov coverage
+
+.. |PyPi| image:: https://badge.fury.io/py/joblib.svg
+   :target: https://badge.fury.io/py/joblib
+   :alt: Joblib version
+
+
 The homepage of joblib with user documentation is located on:
 
 https://pythonhosted.org/joblib/
@@ -43,33 +62,20 @@ request to the main repository.
 Running the test suite
 =========================
 
-To run the test suite, you need the pytest and coverage modules.
+To run the test suite, you need the pytest (version >= 3) and coverage modules.
 Run the test suite using::
 
-    py.test joblib
+    pytest joblib
 
 from the root of the project.
-
-|Travis| |AppVeyor| |Coveralls|
-
-.. |Travis| image:: https://travis-ci.org/joblib/joblib.svg?branch=master
-   :target: https://travis-ci.org/joblib/joblib
-   :alt: Travis build status
-
-.. |AppVeyor| image:: https://ci.appveyor.com/api/projects/status/github/joblib/joblib?branch=master&svg=true
-   :target: https://ci.appveyor.com/project/joblib-ci/joblib/history
-   :alt: AppVeyor build status
-
-.. |Coveralls| image:: https://coveralls.io/repos/joblib/joblib/badge.svg?branch=master&service=github
-   :target: https://coveralls.io/github/joblib/joblib?branch=master
-   :alt: Coveralls coverage
 
 Building the docs
 =========================
 
 To build the docs you need to have setuptools and sphinx (>=0.5) installed.
 Run the command::
-  python setup.py build_sphinx
+
+    python setup.py build_sphinx
 
 The docs are built in the build/sphinx/html directory.
 
@@ -93,7 +99,8 @@ Making a release and uploading it to PyPI
 This command is only run by project manager, to make a release, and
 upload in to PyPI::
 
-    python setup.py sdist bdist_egg bdist_wheel register upload
+    python setup.py sdist bdist_wheel upload_docs --upload-dir build/sphinx/html
+    twine upload dist/*
 
 Updating the changelog
 ========================

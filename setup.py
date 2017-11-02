@@ -21,9 +21,8 @@ if __name__ == '__main__':
           author='Gael Varoquaux',
           author_email='gael.varoquaux@normalesup.org',
           url='http://pythonhosted.org/joblib/',
-          description="""
-Lightweight pipelining: using Python functions as pipeline jobs.
-""",
+          description=("Lightweight pipelining: using Python functions "
+                       "as pipeline jobs."),
           long_description=joblib.__doc__,
           license='BSD',
           classifiers=[
@@ -39,6 +38,7 @@ Lightweight pipelining: using Python functions as pipeline jobs.
               'Programming Language :: Python :: 3.3',
               'Programming Language :: Python :: 3.4',
               'Programming Language :: Python :: 3.5',
+              'Programming Language :: Python :: 3.6',
               'Topic :: Scientific/Engineering',
               'Topic :: Utilities',
               'Topic :: Software Development :: Libraries',
