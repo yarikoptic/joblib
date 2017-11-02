@@ -15,11 +15,6 @@ import shutil
 import time
 import pydoc
 import re
-import sys
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
 import functools
 import traceback
 import warnings
@@ -30,16 +25,19 @@ import io
 import operator
 import collections
 import datetime
+import threading
 
 # Local imports
 from . import hashing
 from .func_inspect import get_func_code, get_func_name, filter_args
-from .func_inspect import format_signature, format_call
+from .func_inspect import format_call
+from .func_inspect import format_signature
 from ._memory_helpers import open_py_source
 from .logger import Logger, format_time, pformat
 from . import numpy_pickle
 from .disk import mkdirp, rm_subdirs, memstr_to_bytes
 from ._compat import _basestring, PY3_OR_LATER
+from .backports import concurrency_safe_rename
 
 FIRST_LINE_TEXT = "# first line:"
 
@@ -203,6 +201,16 @@ def _get_cache_items_to_delete(root_path, bytes_limit):
         size_so_far += item.size
 
     return cache_items_to_delete
+
+
+def concurrency_safe_write(to_write, filename, write_func):
+    """Writes an object into a file in a concurrency-safe way."""
+    thread_id = id(threading.current_thread())
+    temporary_filename = '{}.thread-{}-pid-{}'.format(
+        filename, thread_id, os.getpid())
+    write_func(to_write, temporary_filename)
+    concurrency_safe_rename(temporary_filename, filename)
+
 
 # An in-memory store to avoid looking at the disk-based function
 # source code to check if a function definition has changed
@@ -490,9 +498,10 @@ class MemorizedFunc(Logger):
         # function code has changed
         output_dir, argument_hash = self._get_output_dir(*args, **kwargs)
         metadata = None
+        output_pickle_path = os.path.join(output_dir, 'output.pkl')
         # FIXME: The statements below should be try/excepted
         if not (self._check_previous_func_code(stacklevel=4) and
-                                 os.path.exists(output_dir)):
+                os.path.isfile(output_pickle_path)):
             if self._verbose > 10:
                 _, name = get_func_name(self.func)
                 self.warn('Computing func %s, argument hash %s in '
@@ -520,11 +529,10 @@ class MemorizedFunc(Logger):
                     print(max(0, (80 - len(msg))) * '_' + msg)
             except Exception:
                 # XXX: Should use an exception logger
+                _, signature = format_signature(self.func, *args, **kwargs)
                 self.warn('Exception while loading results for '
-                          '(args=%s, kwargs=%s)\n %s' %
-                          (args, kwargs, traceback.format_exc()))
-
-                shutil.rmtree(output_dir, ignore_errors=True)
+                          '{}\n {}'.format(
+                              signature, traceback.format_exc()))
                 out, metadata = self.call(*args, **kwargs)
                 argument_hash = None
         return (out, argument_hash, metadata)
@@ -749,9 +757,11 @@ class MemorizedFunc(Logger):
         """ Persist the given output tuple in the directory.
         """
         try:
-            mkdirp(dir)
             filename = os.path.join(dir, 'output.pkl')
-            numpy_pickle.dump(output, filename, compress=self.compress)
+            mkdirp(dir)
+            write_func = functools.partial(numpy_pickle.dump,
+                                           compress=self.compress)
+            concurrency_safe_write(output, filename, write_func)
             if self._verbose > 10:
                 print('Persisting in %s' % dir)
         except OSError:
@@ -785,9 +795,14 @@ class MemorizedFunc(Logger):
         metadata = {"duration": duration, "input_args": input_repr}
         try:
             mkdirp(output_dir)
-            with open(os.path.join(output_dir, 'metadata.json'), 'w') as f:
-                json.dump(metadata, f)
-        except:
+            filename = os.path.join(output_dir, 'metadata.json')
+
+            def write_func(output, dest_filename):
+                with open(dest_filename, 'w') as f:
+                    json.dump(output, f)
+
+            concurrency_safe_write(metadata, filename, write_func)
+        except Exception:
             pass
 
         this_duration = time.time() - start_time
