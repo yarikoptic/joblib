@@ -1,10 +1,3 @@
-..
-    For doctests:
-
-    >>> from joblib.testing import warnings_to_stdout
-    >>> warnings_to_stdout()
-    >>> fixture = getfixture('persistence_fixture')
-
 .. _persistence:
 
 ===========
@@ -13,35 +6,35 @@ Persistence
 
 .. currentmodule:: joblib.numpy_pickle
 
-Usecase
-=======
+Use case
+========
 
 :func:`joblib.dump` and :func:`joblib.load` provide a replacement for
-pickle to work efficiently on Python objects containing large data, in
-particular large numpy arrays.
+pickle to work efficiently on arbitrary Python objects containing large data,
+in particular large numpy arrays.
 
 A simple example
 ================
 
-First we create a temporary directory::
+First create a temporary directory::
 
   >>> from tempfile import mkdtemp
   >>> savedir = mkdtemp()
   >>> import os
-  >>> filename = os.path.join(savedir, 'test.pkl')
+  >>> filename = os.path.join(savedir, 'test.joblib')
 
-Then we create an object to be persisted::
+Then create an object to be persisted::
 
   >>> import numpy as np
   >>> to_persist = [('a', [1, 2, 3]), ('b', np.arange(10))]
 
-which we save into `savedir`::
+which is saved into `filename`::
 
   >>> import joblib
   >>> joblib.dump(to_persist, filename)  # doctest: +ELLIPSIS
-  ['...test.pkl']
+  ['...test.joblib']
 
-We can then load the object from the file::
+The object can then be reloaded from the file::
 
   >>> joblib.load(filename)
   [('a', [1, 2, 3]), ('b', array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]))]
@@ -50,7 +43,8 @@ We can then load the object from the file::
 Persistence in file objects
 ===========================
 
-Instead of filenames, `dump` and `load` functions also accept file objects:
+Instead of filenames, :func:`joblib.dump` and :func:`joblib.load` functions
+also accept file objects:
 
   >>> with open(filename, 'wb') as fo:  # doctest: +ELLIPSIS
   ...    joblib.dump(to_persist, fo)
@@ -66,27 +60,34 @@ Setting the `compress` argument to `True` in :func:`joblib.dump` will allow to
 save space on disk:
 
   >>> joblib.dump(to_persist, filename + '.compressed', compress=True)  # doctest: +ELLIPSIS
-  ['...test.pkl.compressed']
+  ['...test.joblib.compressed']
 
 If the filename extension corresponds to one of the supported compression
 methods, the compressor will be used automatically:
 
   >>> joblib.dump(to_persist, filename + '.z')  # doctest: +ELLIPSIS
-  ['...test.pkl.z']
+  ['...test.joblib.z']
 
-By default, `joblib.dump` uses the zlib compression method as it gives the best
-tradeoff between speed and disk space. The other supported compression methods
-are 'gzip', 'bz2', 'lzma' and 'xz':
+By default, :func:`joblib.dump` uses the zlib compression method as it gives
+the best tradeoff between speed and disk space. The other supported compression
+methods are 'gzip', 'bz2', 'lzma' and 'xz':
 
   >>> # Dumping in a gzip compressed file using a compress level of 3.
   >>> joblib.dump(to_persist, filename + '.gz', compress=('gzip', 3))  # doctest: +ELLIPSIS
-  ['...test.pkl.gz']
+  ['...test.joblib.gz']
   >>> joblib.load(filename + '.gz')
   [('a', [1, 2, 3]), ('b', array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]))]
   >>> joblib.dump(to_persist, filename + '.bz2', compress=('bz2', 3))  # doctest: +ELLIPSIS
-  ['...test.pkl.bz2']
+  ['...test.joblib.bz2']
   >>> joblib.load(filename + '.bz2')
   [('a', [1, 2, 3]), ('b', array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]))]
+
+The ``compress`` parameter of the :func:`joblib.dump` function also accepts a
+string corresponding to the name of the compressor used. When using this, the
+default compression level is used by the compressor:
+
+  >>> joblib.dump(to_persist, filename + '.gz', compress='gzip')  # doctest: +ELLIPSIS
+  ['...test.joblib.gz']
 
 .. note::
 
@@ -103,8 +104,29 @@ compress pickle, e.g ``gzip.GzipFile``, ``bz2.BZ2File``, ``lzma.LZMAFile``:
   ...    joblib.load(fo)
   [('a', [1, 2, 3]), ('b', array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]))]
 
+If the ``lz4`` package is installed, this compression method is automatically
+available with the dump function.
+
+  >>> joblib.dump(to_persist, filename + '.lz4')  # doctest: +ELLIPSIS
+  ['...test.joblib.lz4']
+  >>> joblib.load(filename + '.lz4')
+  [('a', [1, 2, 3]), ('b', array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]))]
+
+.. note::
+
+    LZ4 compression is only available with python major versions >= 3
+
 More details can be found in the :func:`joblib.dump` and
 :func:`joblib.load` documentation.
+
+Registering extra compressors
+-----------------------------
+
+Joblib provides :func:`joblib.register_compressor` in order to extend the list
+of default compressors available.
+To fit with Joblib internal implementation and features, such as
+:func:`joblib.load` and :class:`joblib.Memory`, the registered compressor
+should implement the Python file object interface.
 
 Compatibility across python versions
 ------------------------------------
