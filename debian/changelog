@@ -3,6 +3,7 @@ joblib (0.12.1-1) unstable; urgency=medium
   * Fresh upstream release
   * debian
     + specify PYTHONPATH=$(CURDIR) while running the tests
+    + python-lz4 into b-depends and Recommends for python2 pkg
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Thu, 26 Jul 2018 10:07:42 -0400
 

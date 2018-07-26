@@ -5,6 +5,7 @@ Maintainer: Yaroslav Halchenko <debian@onerussian.com>
 Build-Depends: debhelper (>= 7.0.50~),
                python-all (>= 2.5), python-setuptools(>= 0.6), python-pytest, python-numpy,
                python3-all (>= 2.5), python3-setuptools(>= 0.6), python3-pytest, python3-numpy,
+               python-lz4
 Standards-Version: 4.0.0
 Homepage: http://packages.python.org/joblib/
 X-Python-Version: >=2.6
@@ -16,7 +17,9 @@ Vcs-Browser: http://github.com/yarikoptic/joblib
 Package: python-joblib
 Architecture: all
 Depends: ${python:Depends}, ${misc:Depends}
-Recommends: python-numpy, python-pytest, python-simplejson
+Recommends:
+ python-numpy, python-pytest, python-simplejson,
+ python-lz4,
 Description: tools to provide lightweight pipelining in Python
  Joblib is a set of tools to provide lightweight pipelining in
  Python. In particular, joblib offers:
