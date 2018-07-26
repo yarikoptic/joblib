@@ -99,11 +99,25 @@ def test_filter_varargs(func, args, filtered_args):
     assert filter_args(func, *args) == filtered_args
 
 
+test_filter_kwargs_extra_params = []
+if PY3_OR_LATER:
+    m1 = m2 = None
+    # The following statements raise SyntaxError in python 2
+    # because kwargonly is not supported
+    exec("def m1(x, *, y): pass")
+    exec("def m2(x, *, y, z=3): pass")
+    test_filter_kwargs_extra_params.extend([
+        (m1, [[], (1,), {'y': 2}], {'x': 1, 'y': 2}),
+        (m2, [[], (1,), {'y': 2}], {'x': 1, 'y': 2, 'z': 3})
+    ])
+
+
 @parametrize('func,args,filtered_args',
              [(k, [[], (1, 2), {'ee': 2}],
                {'*': [1, 2], '**': {'ee': 2}}),
               (k, [[], (3, 4)],
-               {'*': [3, 4], '**': {}})])
+               {'*': [3, 4], '**': {}})] +
+             test_filter_kwargs_extra_params)
 def test_filter_kwargs(func, args, filtered_args):
     assert filter_args(func, *args) == filtered_args
 
@@ -146,14 +160,17 @@ def test_func_inspect_errors():
     assert get_func_code(ff)[1] == __file__.replace('.pyc', '.py')
 
 
-def func_with_kwonly_args(a, b, kw1='kw1', kw2='kw2'):
-    pass
-
-
-def func_with_signature(a, b):
-    pass
-
 if PY3_OR_LATER:
+    # Avoid flake8 F821 "undefined name" warning. func_with_kwonly_args and
+    # func_with_signature are redefined in the exec statement a few lines below
+    def func_with_kwonly_args():
+        pass
+
+    def func_with_signature():
+        pass
+
+    # exec is needed to define a function with a keyword-only argument and a
+    # function with signature while avoiding a SyntaxError on Python 2
     exec("""
 def func_with_kwonly_args(a, b, *, kw1='kw1', kw2='kw2'): pass
 
