@@ -5,6 +5,7 @@ Source: http://github.com/joblib/joblib
 
 Files: *
 Copyright: 2009-2010, Gael Varoquaux <gael.varoquaux@normalesup.org>
+           2008-2018, Joblib developers
 License: BSD-3
 
 Files: sphinx_pypi_upload.py
@@ -16,7 +17,7 @@ Copyright: 2008, Stefan van der Walt <stefan@mentat.za.net>, Pauli Virtanen <pav
 License: BSD-2
 
 Files: debian/*
-Copyright: 2010, NeuroDebian Team <team@neuro.debian.net>
+Copyright: 2010-2018, NeuroDebian Team <team@neuro.debian.net>
 License: BSD-3
 
 
