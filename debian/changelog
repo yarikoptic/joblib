@@ -1,6 +1,8 @@
 joblib (0.12.1-1) unstable; urgency=medium
 
   * Fresh upstream release
+  * debian
+    + specify PYTHONPATH=$(CURDIR) while running the tests
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Thu, 26 Jul 2018 10:07:42 -0400
 
