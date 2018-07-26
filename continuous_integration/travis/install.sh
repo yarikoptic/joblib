@@ -18,7 +18,7 @@ print_conda_requirements() {
     # if yes which version to install. For example:
     #   - for numpy, NUMPY_VERSION is used
     #   - for scikit-learn, SCIKIT_LEARN_VERSION is used
-    TO_INSTALL_ALWAYS="pip"
+    TO_INSTALL_ALWAYS="pip pytest"
     REQUIREMENTS="$TO_INSTALL_ALWAYS"
     TO_INSTALL_MAYBE="python numpy flake8"
     for PACKAGE in $TO_INSTALL_MAYBE; do
@@ -43,10 +43,11 @@ create_new_conda_env() {
 
     # Use the miniconda installer for faster download / install of conda
     # itself
-    wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh \
+    wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
          -O miniconda.sh
-    chmod +x miniconda.sh && ./miniconda.sh -b
-    export PATH=/home/travis/miniconda2/bin:$PATH
+    MINICONDA_PREFIX=/home/travis/miniconda
+    chmod +x miniconda.sh && ./miniconda.sh -b -p $MINICONDA_PREFIX
+    export PATH=$MINICONDA_PREFIX/bin:$PATH
     conda update --yes conda
 
     # Configure the conda environment and put it in the path using the
@@ -64,29 +65,36 @@ create_new_conda_env() {
         conda remove --yes --features mkl || echo "MKL not installed"
     fi
 
-    # Install pytest with pip to make sure we have pytest >= 3 because
-    # conda has some outdated dependencies for Python 3.3. This can be
-    # removed and pytest can be install through conda when we drop
-    # support for Python 3.3
-    pip install pytest
 }
 
 create_new_conda_env
 
+# Install py.test timeout to fasten failure in deadlocking tests
+PIP_INSTALL_PACKAGES="pytest-timeout"
+
 if [ -n "$NUMPY_VERSION" ]; then
     # We want to ensure no memory copies are performed only when numpy is
     # installed. This also ensures that we don't keep a strong dependency on
-    # memory_profiler.
-    pip install memory_profiler
+    # memory_profiler. We also want to ensure that joblib can be used with and
+    # without lz4 compressor package installed.
+    PIP_INSTALL_PACKAGES="$PIP_INSTALL_PACKAGES memory_profiler"
+    if [ "$NO_LZ4" != "true" ]; then
+        PIP_INSTALL_PACKAGES="$PIP_INSTALL_PACKAGES lz4"
+    fi
 fi
 
 if [[ "$COVERAGE" == "true" ]]; then
-    pip install pytest-cov codecov
+    PIP_INSTALL_PACKAGES="$PIP_INSTALL_PACKAGES pytest-cov codecov"
 fi
 
-if [[ "$BUILD_DOC" == "true" ]]; then
-    conda install sphinx --yes
-    python setup.py build_sphinx
+pip install $PIP_INSTALL_PACKAGES
+
+
+if [[ "$CYTHON" == "true" ]]; then
+    pip install cython
+    cd joblib/test/_openmp_test_helper
+    python setup.py build_ext -i
+    cd ../../..
 fi
 
 python setup.py install

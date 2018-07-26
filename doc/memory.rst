@@ -12,12 +12,12 @@ On demand recomputing: the `Memory` class
 
 .. currentmodule:: joblib.memory
 
-Usecase
+Use case
 --------
 
 The `Memory` class defines a context for lazy evaluation of function, by
-storing the results to the disk, and not rerunning the function twice for
-the same arguments.
+putting the results in a store, by default using a disk, and not re-running
+the function twice for the same arguments.
 
 ..
  Commented out in favor of briefness
@@ -37,26 +37,26 @@ such as numpy arrays.
 A simple example:
 ~~~~~~~~~~~~~~~~~
 
-  First we create a temporary directory, for the cache::
+  First, define the cache directory::
 
-    >>> from tempfile import mkdtemp
-    >>> cachedir = mkdtemp()
+    >>> cachedir = 'your_cache_location_directory'
 
-  We can instantiate a memory context, using this cache directory::
+  Then, instanciate a memory context that uses this cache directory::
 
     >>> from joblib import Memory
-    >>> memory = Memory(cachedir=cachedir, verbose=0)
+    >>> memory = Memory(cachedir, verbose=0)
 
-  Then we can decorate a function to be cached in this context::
+  After these initial steps, just decorate a function to cache its output in
+  this context::
 
     >>> @memory.cache
     ... def f(x):
     ...     print('Running f(%s)' % x)
     ...     return x
 
-  When we call this function twice with the same argument, it does not
-  get executed the second time, and the output gets loaded from the pickle
-  file::
+  Calling this function twice with the same argument does not execute it the
+  second time, the output is just reloaded from a pickle file in the cache
+  directory::
 
     >>> print(f(1))
     Running f(1)
@@ -64,8 +64,8 @@ A simple example:
     >>> print(f(1))
     1
 
-  However, when we call it a third time, with a different argument, the
-  output gets recomputed::
+  However, calling the function with a different parameter executes it and
+  recomputes the output::
 
     >>> print(f(2))
     Running f(2)
@@ -91,18 +91,18 @@ input and output objects, and aggressive persistence to disk.
 
 
 Using with `numpy`
--------------------
+------------------
 
-The original motivation behind the `Memory` context was to be able to a
+The original motivation behind the `Memory` context was to have a
 memoize-like pattern on numpy arrays. `Memory` uses fast cryptographic
 hashing of the input arguments to check if they have been computed;
 
 An example
-~~~~~~~~~~~
+~~~~~~~~~~
 
-  We define two functions, the first with a number as an argument,
-  outputting an array, used by the second one. We decorate both
-  functions with `Memory.cache`::
+  Define two functions: the first with a number as an argument,
+  outputting an array, used by the second one. Both functions are decorated
+  with `Memory.cache`::
 
     >>> import numpy as np
 
@@ -116,22 +116,22 @@ An example
     ...     print('A second long-running calculation, using g(x)')
     ...     return np.vander(x)
 
-  If we call the function h with the array created by the same call to g,
-  h is not re-run::
+  If the function `h` is called with the array created by the same call to `g`,
+  `h` is not re-run::
 
     >>> a = g(3)
     A long-running calculation, with parameter 3
     >>> a
-    array([ 0.08,  1.  ,  0.08])
+    array([0.08, 1.  , 0.08])
     >>> g(3)
-    array([ 0.08,  1.  ,  0.08])
+    array([0.08, 1.  , 0.08])
     >>> b = h(a)
     A second long-running calculation, using g(x)
     >>> b2 = h(a)
     >>> b2
-    array([[ 0.0064,  0.08  ,  1.    ],
-           [ 1.    ,  1.    ,  1.    ],
-           [ 0.0064,  0.08  ,  1.    ]])
+    array([[0.0064, 0.08  , 1.    ],
+           [1.    , 1.    , 1.    ],
+           [0.0064, 0.08  , 1.    ]])
     >>> np.allclose(b, b2)
     True
 
@@ -139,23 +139,23 @@ An example
 Using memmapping
 ~~~~~~~~~~~~~~~~
 
-To speed up cache looking of large numpy arrays, you can load them
-using memmapping (memory mapping)::
+Memmapping (memory mapping) speeds up cache looking when reloading large numpy
+arrays::
 
-    >>> cachedir2 = mkdtemp()
-    >>> memory2 = Memory(cachedir=cachedir2, mmap_mode='r')
+    >>> cachedir2 = 'your_cachedir2_location'
+    >>> memory2 = Memory(cachedir2, mmap_mode='r')
     >>> square = memory2.cache(np.square)
     >>> a = np.vander(np.arange(3)).astype(np.float)
     >>> square(a)
     ________________________________________________________________________________
     [Memory] Calling square...
-    square(array([[ 0.,  0.,  1.],
-           [ 1.,  1.,  1.],
-           [ 4.,  2.,  1.]]))
+    square(array([[0., 0., 1.],
+           [1., 1., 1.],
+           [4., 2., 1.]]))
     ___________________________________________________________square - 0.0s, 0.0min
-    memmap([[  0.,   0.,   1.],
-           [  1.,   1.,   1.],
-           [ 16.,   4.,   1.]])
+    memmap([[ 0.,  0.,  1.],
+            [ 1.,  1.,  1.],
+            [16.,  4.,  1.]])
 
 .. note::
 
@@ -167,13 +167,13 @@ return value is loaded from the disk using memmapping::
 
     >>> res = square(a)
     >>> print(repr(res))
-    memmap([[  0.,   0.,   1.],
-           [  1.,   1.,   1.],
-           [ 16.,   4.,   1.]])
+    memmap([[ 0.,  0.,  1.],
+            [ 1.,  1.,  1.],
+            [16.,  4.,  1.]])
 
 ..
 
- We need to close the memmap file to avoid file locking on Windows; closing
+ The memmap file must be closed to avoid file locking on Windows; closing
  numpy.memmap objects is done with del, which flushes changes to the disk
 
     >>> del res
@@ -206,14 +206,14 @@ Getting a reference to the cache can be done using the
     >>> result = g.call_and_shelve(4)
     A long-running calculation, with parameter 4
     >>> result  #doctest: +ELLIPSIS
-    MemorizedResult(cachedir="...", func="g...", argument_hash="...")
+    MemorizedResult(location="...", func="...g...", argument_hash="...")
 
 Once computed, the output of `g` is stored on disk, and deleted from
 memory. Reading the associated value can then be performed with the
 `get` method::
 
     >>> result.get()
-    array([ 0.08,  0.77,  0.77,  0.08])
+    array([0.08, 0.77, 0.77, 0.08])
 
 The cache for this particular value can be cleared using the `clear`
 method. Its invocation causes the stored value to be erased from disk.
@@ -221,9 +221,9 @@ Any subsequent call to `get` will cause a `KeyError` exception to be
 raised::
 
     >>> result.clear()
-    >>> result.get()  #doctest: +ELLIPSIS
+    >>> result.get()  #doctest: +SKIP
     Traceback (most recent call last):
-        ...
+    ...
     KeyError: 'Non-existing cache value (may have been cleared).\nFile ... does not exist'
 
 A `MemorizedResult` instance contains all that is necessary to read
@@ -234,7 +234,7 @@ python interpreter.
 .. topic:: Shelving when cache is disabled
 
     In the case where caching is disabled (e.g.
-    `Memory(cachedir=None)`), the `call_and_shelve` method returns a
+    `Memory(None)`), the `call_and_shelve` method returns a
     `NotMemorizedResult` instance, that stores the full function
     output, instead of just a reference (since there is nothing to
     point to). All the above remains valid though, except for the
@@ -245,9 +245,9 @@ Gotchas
 --------
 
 * **Across sessions, function cache is identified by the function's name**.
-  Thus if you assign the same name to different functions, their cache will
-  override each-others (you have 'name collisions'), and you will get
-  unwanted re-run::
+  Thus assigning the same name to different functions, their cache will
+  override each-others (e.g. there are 'name collisions'), and unwanted re-run
+  will happen::
 
     >>> @memory.cache
     ... def func(x):
@@ -259,15 +259,16 @@ Gotchas
     ... def func(x):
     ...     print('Running a different func(%s)' % x)
 
-  As long as you stay in the same session, there are no collisions (in joblib
+  As long as the same session is used, there are no collisions (in joblib
   0.8 and above), altough joblib does warn you that you are doing something
   dangerous::
 
     >>> func(1)
     Running a different func(1)
 
+    >>> # FIXME: The next line should create a JolibCollisionWarning but does not
+    >>> # memory.rst:0: JobLibCollisionWarning: Possible name collisions between functions 'func' (<doctest memory.rst>:...) and 'func' (<doctest memory.rst>:...)
     >>> func2(1)  #doctest: +ELLIPSIS
-    memory.rst:0: JobLibCollisionWarning: Possible name collisions between functions 'func' (<doctest memory.rst>:...) and 'func' (<doctest memory.rst>:...)
     Running func(1)
 
     >>> func(1) # No recomputation so far
@@ -280,16 +281,17 @@ Gotchas
      >>> import joblib.memory
      >>> joblib.memory._FUNCTION_HASHES.clear()
 
-  But suppose you exit the interpreter and restart it, the cache will not
+  But suppose the interpreter is exited and then restarted, the cache will not
   be identified properly, and the functions will be rerun::
 
-    >>> func(1) #doctest: +ELLIPSIS
-    memory.rst:0: JobLibCollisionWarning: Possible name collisions between functions 'func' (<doctest memory.rst>:...) and 'func' (<doctest memory.rst>:...)
+    >>> # FIXME: The next line will should create a JoblibCollisionWarning but does not. Also it is skipped because it does not produce any output
+    >>> # memory.rst:0: JobLibCollisionWarning: Possible name collisions between functions 'func' (<doctest memory.rst>:...) and 'func' (<doctest memory.rst>:...)
+    >>> func(1) #doctest: +ELLIPSIS +SKIP
     Running a different func(1)
-    >>> func2(1)  #doctest: +ELLIPSIS
+    >>> func2(1)  #doctest: +ELLIPSIS +SKIP
     Running func(1)
 
-  As long as you stay in the same session, you are not getting needless
+  As long as the same session is used, there are no needless
   recomputation::
 
     >>> func(1) # No recomputation now
@@ -325,7 +327,7 @@ Gotchas
     0.0
 
 * **caching methods: memory is designed for pure functions and it is
-  not recommended to use it for methods**. If you want to use cache
+  not recommended to use it for methods**. If one wants to use cache
   inside a class the recommended pattern is to cache a pure function
   and use the cached function inside your class, i.e. something like
   this::
@@ -346,11 +348,11 @@ Gotchas
 
   Using ``Memory`` for methods is not recommended and has some caveats
   that make it very fragile from a maintenance point of view because
-  it is very easy to forget about these caveats when your software
-  evolves. If you still want to do it (we would be interested about
+  it is very easy to forget about these caveats when a software
+  evolves. If this cannot be avoided (we would be interested about
   your use case by the way), here are a few known caveats:
 
-  1. you cannot decorate a method at class definition,
+  1. a method cannot be decorated at class definition,
      because when the class is instantiated, the first argument (self) is
      *bound*, and no longer accessible to the `Memory` object. The
      following code won't work::
@@ -385,7 +387,7 @@ Gotchas
 
 
 Ignoring some arguments
-------------------------
+-----------------------
 
 It may be useful not to recalculate a function when certain arguments
 change, for instance a debug flag. `Memory` provides the `ignore` list::
@@ -403,20 +405,20 @@ change, for instance a debug flag. `Memory` provides the `ignore` list::
 .. _memory_reference:
 
 Reference documentation of the `Memory` class
-----------------------------------------------
+---------------------------------------------
 
 .. autoclass:: Memory
     :members: __init__, cache, eval, clear
 
 Useful methods of decorated functions
---------------------------------------
+-------------------------------------
 
 Function decorated by :meth:`Memory.cache` are :class:`MemorizedFunc`
 objects that, in addition of behaving like normal functions, expose
 methods useful for cache exploration and management.
 
 .. autoclass:: MemorizedFunc
-    :members: __init__, call, clear, get_output_dir
+    :members: __init__, call, clear
 
 
 ..

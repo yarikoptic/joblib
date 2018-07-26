@@ -5,8 +5,8 @@
     >>> setup = getfixture('parallel_numpy_fixture')
     >>> fixture = setup(sys.modules[__name__])
 
-Working with numerical data in shared memory (memmaping)
-========================================================
+Working with numerical data in shared memory (memmapping)
+=========================================================
 
 By default the workers of the pool are real Python processes forked using the
 ``multiprocessing`` module of the Python standard library when ``n_jobs != 1``.
@@ -26,9 +26,17 @@ worker processes.
 
 .. note::
 
-  The following only applies with the default ``"multiprocessing"`` backend. If
-  your code can release the GIL, then using ``backend="threading"`` is even
-  more efficient.
+  The following only applies with the ``"loky"` and
+  ``'multiprocessing'`` process-backends. If your code can release the
+  GIL, then using a thread-based backend backend by passing
+  ``prefer='threads'`` is even more efficient because it makes it
+  possible to avoid the communication overhead of process-based
+  parallelism.
+
+  Scientific Python libraries such as numpy, scipy, pandas and
+  scikit-learn often release the GIL in performance critical code paths.
+  It is therefore advised to always measure the speed of thread-based
+  parallelism and use it when the scalability is not limited by the GIL.
 
 
 Automated array to memmap conversion
@@ -39,18 +47,19 @@ threshold on the size of the array::
 
   >>> import numpy as np
   >>> from joblib import Parallel, delayed
-  >>> from joblib.pool import has_shareable_memory
+  >>> def is_memmap(obj):
+  ...     return isinstance(obj, np.memmap)
 
   >>> Parallel(n_jobs=2, max_nbytes=1e6)(
-  ...     delayed(has_shareable_memory)(np.ones(int(i)))
+  ...     delayed(is_memmap)(np.ones(int(i)))
   ...     for i in [1e2, 1e4, 1e6])
   [False, False, True]
 
 By default the data is dumped to the ``/dev/shm`` shared-memory partition if it
-exists and writeable (typically the case under Linux). Otherwise the operating
-system's temporary folder is used. The location of the temporary data files can
-be customized by passing a ``temp_folder`` argument to the ``Parallel``
-constructor.
+exists and is writable (typically the case under Linux). Otherwise the
+operating system's temporary folder is used. The location of the temporary data
+files can be customized by passing a ``temp_folder`` argument to the
+``Parallel`` constructor.
 
 Passing ``max_nbytes=None`` makes it possible to disable the automated array to
 memmap conversion.
@@ -60,13 +69,13 @@ Manual management of memmaped input data
 ----------------------------------------
 
 For even finer tuning of the memory usage it is also possible to
-dump the array as an memmap directly from the parent process to
+dump the array as a memmap directly from the parent process to
 free the memory before forking the worker processes. For instance
 let's allocate a large array in the memory of the parent process::
 
   >>> large_array = np.ones(int(1e6))
 
-Dump it to a local file for memmaping::
+Dump it to a local file for memmapping::
 
   >>> import tempfile
   >>> import os
@@ -87,7 +96,7 @@ instance::
   >>> np.allclose(large_array, large_memmap)
   True
 
-We can free the original array from the main process memory::
+The original array can be freed from the main process memory::
 
   >>> del large_array
   >>> import gc
@@ -99,8 +108,8 @@ It is possible to slice ``large_memmap`` into a smaller memmap::
   >>> small_memmap.__class__.__name__, small_memmap.nbytes, small_memmap.shape
   ('memmap', 24, (3,))
 
-Finally we can also take a ``np.ndarray`` view backed on that same
-memory mapped file::
+Finally a ``np.ndarray`` view backed on that same memory mapped file can be
+used::
 
   >>> small_array = np.asarray(small_memmap)
   >>> small_array.__class__.__name__, small_array.nbytes, small_array.shape
@@ -111,11 +120,11 @@ this same buffer will also be reused directly by the worker processes
 of a ``Parallel`` call::
 
   >>> Parallel(n_jobs=2, max_nbytes=None)(
-  ...     delayed(has_shareable_memory)(a)
+  ...     delayed(is_memmap)(a)
   ...     for a in [large_memmap, small_memmap, small_array])
   [True, True, True]
 
-Note that here we used ``max_nbytes=None`` to disable the auto-dumping
+Note that here ``max_nbytes=None`` is used to disable the auto-dumping
 feature of ``Parallel``. ``small_array`` is still in shared memory in the
 worker processes because it was already backed by shared memory in the
 parent process.
@@ -127,17 +136,14 @@ the number of memory copies.
 Writing parallel computation results in shared memory
 -----------------------------------------------------
 
-If you open your data using the ``w+`` or ``r+`` mode in the main program, the
+If data are opened using the ``w+`` or ``r+`` mode in the main program, the
 worker will get ``r+`` mode access. Thus the worker will be able to write
 its results directly to the original data, alleviating the need of the
 serialization to send back the results to the parent process.
 
 Here is an example script on parallel processing with preallocated
-``numpy.memmap`` datastructures:
-
-.. literalinclude:: ../examples/parallel_memmap.py
-   :language: python
-   :linenos:
+``numpy.memmap`` datastructures
+:ref:`sphx_glr_auto_examples_parallel_memmap.py`.
 
 .. warning::
 

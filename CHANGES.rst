@@ -1,6 +1,97 @@
 Latest changes
 ===============
 
+Release 0.12.1
+--------------
+
+Thomas Moreau
+
+    Make sure that any exception triggered when serializing jobs in the queue
+    will be wrapped as a PicklingError as in past versions of joblib.
+
+Noam Hershtig
+
+    Fix kwonlydefaults key error in filter_args (#715)
+
+
+Release 0.12
+------------
+
+Thomas Moreau
+
+    Implement the ``'loky'`` backend with @ogrisel. This backend relies on
+    a robust implementation of ``concurrent.futures.ProcessPoolExecutor``
+    with spawned processes that can be reused accross the ``Parallel``
+    calls. This fixes the bad interation with third paty libraries relying on
+    thread pools, described in https://pythonhosted.org/joblib/parallel.html#bad-interaction-of-multiprocessing-and-third-party-libraries
+
+    Limit the number of threads used in worker processes by C-libraries that
+    relies on threadpools. This functionality works for MKL, OpenBLAS, OpenMP
+    and Accelerated.
+
+Elizabeth Sander
+
+    Prevent numpy arrays with the same shape and data from hashing to
+    the same memmap, to prevent jobs with preallocated arrays from
+    writing over each other.
+
+Olivier Grisel
+
+    Reduce overhead of automatic memmap by removing the need to hash the
+    array.
+
+    Make ``Memory.cache`` robust to ``PermissionError (errno 13)`` under
+    Windows when run in combination with ``Parallel``.
+
+    The automatic array memory mapping feature of ``Parallel`` does no longer
+    use ``/dev/shm`` if it is too small (less than 2 GB). In particular in
+    docker containers ``/dev/shm`` is only 64 MB by default which would cause
+    frequent failures when running joblib in Docker containers.
+
+    Make it possible to hint for thread-based parallelism with
+    ``prefer='threads'`` or enforce shared-memory semantics with
+    ``require='sharedmem'``.
+
+    Rely on the built-in exception nesting system of Python 3 to preserve
+    traceback information when an exception is raised on a remote worker
+    process. This avoid verbose and redundant exception reports under
+    Python 3.
+
+    Preserve exception type information when doing nested Parallel calls
+    instead of mapping the exception to the generic ``JoblibException`` type.
+
+
+Alexandre Abadie
+
+    Introduce the concept of 'store' and refactor the ``Memory`` internal
+    storage implementation to make it accept extra store backends for caching
+    results. ``backend`` and ``backend_options`` are the new options added to
+    ``Memory`` to specify and configure a store backend.
+
+    Add the ``register_store_backend`` function to extend the store backend
+    used by default with Memory. This default store backend is named 'local'
+    and corresponds to the local filesystem.
+
+    The store backend API is experimental and thus is subject to change in the
+    future without deprecation.
+
+    The ``cachedir`` parameter of ``Memory`` is now marked as deprecated, use
+    ``location`` instead.
+
+    Add support for LZ4 compression if ``lz4`` package is installed.
+
+    Add ``register_compressor`` function for extending available compressors.
+
+    Allow passing a string to ``compress`` parameter in ``dump`` funtion. This
+    string should correspond to the compressor used (e.g. zlib, gzip, lz4,
+    etc). The default compression level is used in this case.
+
+Matthew Rocklin
+
+    Allow ``parallel_backend`` to be used globally instead of only as a context
+    manager.
+    Support lazy registration of external parallel backends
+
 Release 0.11
 ------------
 
@@ -284,7 +375,7 @@ Release 0.8.2
 2014-06-30
 Olivier Grisel
 
-    BUG: use mmap_mode='r' by default in Parallel and MemmapingPool
+    BUG: use mmap_mode='r' by default in Parallel and MemmappingPool
 
     The former default of mmap_mode='c' (copy-on-write) caused
     problematic use of the paging file under Windows.

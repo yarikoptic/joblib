@@ -8,7 +8,7 @@ import joblib
 # For some commands, use setuptools
 if len(set(('develop', 'sdist', 'release', 'bdist', 'bdist_egg', 'bdist_dumb',
             'bdist_rpm', 'bdist_wheel', 'bdist_wininst', 'install_egg_info',
-            'build_sphinx', 'egg_info', 'easy_install', 'upload',
+            'egg_info', 'easy_install', 'upload',
             )).intersection(sys.argv)) > 0:
     import setuptools
 
@@ -35,7 +35,6 @@ if __name__ == '__main__':
               'Operating System :: OS Independent',
               'Programming Language :: Python :: 2.7',
               'Programming Language :: Python :: 3',
-              'Programming Language :: Python :: 3.3',
               'Programming Language :: Python :: 3.4',
               'Programming Language :: Python :: 3.5',
               'Programming Language :: Python :: 3.6',
@@ -52,5 +51,7 @@ if __name__ == '__main__':
                                         'data/*.pkl',
                                         'data/*.npy',
                                         'data/*.npy.z']},
-          packages=['joblib', 'joblib.test', 'joblib.test.data'],
+          packages=['joblib', 'joblib.test', 'joblib.test.data',
+                    'joblib.externals', 'joblib.externals.cloudpickle',
+                    'joblib.externals.loky', 'joblib.externals.loky.backend'],
           **extra_setuptools_args)
