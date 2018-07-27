@@ -9,6 +9,9 @@ joblib (0.12.1-1) unstable; urgency=medium
   * debian/patches
     + 0001-RF-loky-use-psutil.Process-to-deduce-children-proces.patch
       to avoid need for pgrep
+    + deb_collect_ignore_setup
+      to avoid failing to collect tests due to various troubles on older
+      systems
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Thu, 26 Jul 2018 10:07:42 -0400
 
