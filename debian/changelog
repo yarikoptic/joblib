@@ -7,8 +7,6 @@ joblib (0.12.1-1) unstable; urgency=medium
     + cython{,3} into b-depends so that joblib/test/_openmp_test_helper
       can setup
   * debian/patches
-    + 0001-RF-loky-use-psutil.Process-to-deduce-children-proces.patch
-      to avoid need for pgrep
     + deb_collect_ignore_setup
       to avoid failing to collect tests due to various troubles on older
       systems
