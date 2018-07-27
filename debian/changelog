@@ -6,6 +6,9 @@ joblib (0.12.1-1) unstable; urgency=medium
     + python-lz4 into b-depends and Recommends for python2 pkg
     + cython{,3} into b-depends so that joblib/test/_openmp_test_helper
       can setup
+  * debian/patches
+    + 0001-RF-loky-use-psutil.Process-to-deduce-children-proces.patch
+      to avoid need for pgrep
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Thu, 26 Jul 2018 10:07:42 -0400
 
