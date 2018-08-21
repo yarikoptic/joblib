@@ -16,6 +16,7 @@ from math import sqrt
 from time import sleep
 from pickle import PicklingError
 from multiprocessing import TimeoutError
+import pytest
 
 import joblib
 from joblib import dump, load
@@ -936,7 +937,7 @@ def test_parallel_with_unpicklable_functions_in_args(
         stdout_regex=r'\[0, 1, 4, 9, 16\]')
 
 
-DEFAULT_BACKEND_SCRIPT_CONTENT = """\
+INTERACTIVE_DEFINED_FUNCTION_AND_CLASS_SCRIPT_CONTENT = """\
 import sys
 # Make sure that joblib is importable in the subprocess launching this
 # script. This is needed in case we run the tests from the joblib root
@@ -944,14 +945,34 @@ import sys
 sys.path.insert(0, {joblib_root_folder!r})
 
 from joblib import Parallel, delayed
+from functools import partial
+
+class MyClass:
+    '''Class defined in the __main__ namespace'''
+    def __init__(self, value):
+        self.value = value
 
 
-def square(x):
-    return x ** 2
+def square(x, ignored=None, ignored2=None):
+    '''Function defined in the __main__ namespace'''
+    return x.value ** 2
+
+
+square2 = partial(square, ignored2='something')
 
 # Here, we do not need the `if __name__ == "__main__":` safeguard when
 # using the default `loky` backend (even on Windows).
-print(Parallel(n_jobs=2)(delayed(square)(i) for i in range(5)))
+
+# The following baroque function call is meant to check that joblib
+# introspection rightfully uses cloudpickle instead of the (faster) pickle
+# module of the standard library when necessary. In particular cloudpickle is
+# necessary for functions and instances of classes interactively defined in the
+# __main__ module.
+
+print(Parallel(n_jobs=2)(
+    delayed(square2)(MyClass(i), ignored=[dict(a=MyClass(1))])
+    for i in range(5)
+))
 """.format(joblib_root_folder=os.path.dirname(
     os.path.dirname(joblib.__file__)))
 
@@ -962,10 +983,43 @@ def test_parallel_with_interactively_defined_functions_default_backend(tmpdir):
     # __main__ and does not require if __name__ == '__main__' even when
     # the __main__ module is defined by the result of the execution of a
     # filesystem script.
-    script = tmpdir.join('joblib_default_backend_script.py')
-    script.write(DEFAULT_BACKEND_SCRIPT_CONTENT)
+    script = tmpdir.join('joblib_interactively_defined_function.py')
+    script.write(INTERACTIVE_DEFINED_FUNCTION_AND_CLASS_SCRIPT_CONTENT)
     check_subprocess_call([sys.executable, script.strpath],
                           stdout_regex=r'\[0, 1, 4, 9, 16\]',
+                          timeout=5)
+
+
+INTERACTIVELY_DEFINED_SUBCLASS_WITH_METHOD_SCRIPT_CONTENT = """\
+import sys
+# Make sure that joblib is importable in the subprocess launching this
+# script. This is needed in case we run the tests from the joblib root
+# folder without having installed joblib
+sys.path.insert(0, {joblib_root_folder!r})
+
+from joblib import Parallel, delayed, hash
+
+class MyList(list):
+    '''MyList is interactively defined by MyList.append is a built-in'''
+    def __hash__(self):
+        # XXX: workaround limitation in cloudpickle
+        return hash(self).__hash__()
+
+l = MyList()
+
+print(Parallel(n_jobs=2)(
+    delayed(l.append)(i) for i in range(3)
+))
+""".format(joblib_root_folder=os.path.dirname(
+    os.path.dirname(joblib.__file__)))
+
+
+@with_multiprocessing
+def test_parallel_with_interactively_defined_bound_method(tmpdir):
+    script = tmpdir.join('joblib_interactive_bound_method_script.py')
+    script.write(INTERACTIVELY_DEFINED_SUBCLASS_WITH_METHOD_SCRIPT_CONTENT)
+    check_subprocess_call([sys.executable, script.strpath],
+                          stdout_regex=r'\[None, None, None\]',
                           timeout=5)
 
 
@@ -1093,6 +1147,8 @@ def test_lambda_expression():
 
 
 def test_delayed_check_pickle_deprecated():
+    if sys.version_info < (3, 4):
+        pytest.skip("Warning check unstable under Python 2, life is too short")
 
     class UnpicklableCallable(object):
 
@@ -1288,21 +1344,21 @@ def test_external_backends():
         assert isinstance(Parallel()._backend, ThreadingBackend)
 
 
-def _recursive_backend_info(limit=3):
+def _recursive_backend_info(limit=3, **kwargs):
     """Perform nested parallel calls and introspect the backend on the way"""
 
     with Parallel() as p:
         this_level = [(type(p._backend).__name__, p._backend.nesting_level)]
         if limit == 0:
             return this_level
-        results = p(delayed(_recursive_backend_info)(limit=limit - 1)
+        results = p(delayed(_recursive_backend_info)(limit=limit - 1, **kwargs)
                     for i in range(1))
         return this_level + results[0]
 
 
 @with_multiprocessing
 @parametrize('backend', ['loky', 'threading'])
-def test_nested_parallel_limit(backend):
+def test_nested_parallelism_limit(backend):
     with parallel_backend(backend, n_jobs=2):
         backend_types_and_levels = _recursive_backend_info()
 
@@ -1314,6 +1370,28 @@ def test_nested_parallel_limit(backend):
         ('SequentialBackend', 3)
     ]
     assert backend_types_and_levels == expected_types_and_levels
+
+
+@with_numpy
+def test_nested_parallelism_with_dask():
+    distributed = pytest.importorskip('distributed')
+    client = distributed.Client()  # noqa
+
+    # 10 MB of data as argument to trigger implicit scattering
+    data = np.ones(int(1e7), dtype=np.uint8)
+    for i in range(2):
+        with parallel_backend('dask'):
+            backend_types_and_levels = _recursive_backend_info(data=data)
+        assert len(backend_types_and_levels) == 4
+        assert all(name == 'DaskDistributedBackend'
+                   for name, _ in backend_types_and_levels)
+
+    # No argument
+    with parallel_backend('dask'):
+        backend_types_and_levels = _recursive_backend_info()
+    assert len(backend_types_and_levels) == 4
+    assert all(name == 'DaskDistributedBackend'
+               for name, _ in backend_types_and_levels)
 
 
 def _recursive_parallel(nesting_limit=None):
