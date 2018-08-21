@@ -1,8 +1,8 @@
 --- a/conftest.py
 +++ b/conftest.py
-@@ -6,6 +6,8 @@ from _pytest.doctest import DoctestItem
- import logging
- from joblib.parallel import mp
+@@ -10,6 +10,8 @@ try:
+ except ImportError:
+     lz4 = None
  
 +# Would crash on older systems
 +collect_ignore = ["joblib/test/_openmp_test_helper/setup.py"]
