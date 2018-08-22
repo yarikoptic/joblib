@@ -1,3 +1,10 @@
+joblib (0.12.2-2) UNRELEASED; urgency=medium
+
+  * debian/control,compat
+    - boost to compat 9
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 22 Aug 2018 13:59:04 -0400
+
 joblib (0.12.2-1) unstable; urgency=medium
 
   * Fresh upstream release
