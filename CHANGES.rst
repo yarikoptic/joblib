@@ -1,6 +1,40 @@
 Latest changes
 ===============
 
+Release 0.12.3
+--------------
+
+Thomas Moreau
+
+    Fix joblib import setting the global start_method for multiprocessing.
+
+Alexandre Abadie
+
+    Fix MemorizedResult not picklable (#747).
+
+Loïc Estève
+
+    Fix Memory, MemorizedFunc and MemorizedResult round-trip pickling +
+    unpickling (#746).
+
+James Collins
+
+    Fixed a regression in Memory when positional arguments are called as
+    kwargs several times with different values (#751).
+
+Thomas Moreau and Olivier Grisel
+
+    Integration of loky 2.2.2 that fixes issues with the selection of the
+    default start method and improve the reporting when calling functions
+    with arguments that raise an exception when unpickling.
+
+
+Maxime Weyl
+
+    Prevent MemorizedFunc.call_and_shelve from loading cached results to
+    RAM when not necessary. Results in big performance improvements
+    
+
 Release 0.12.2
 --------------
 

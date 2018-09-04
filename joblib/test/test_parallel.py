@@ -241,6 +241,17 @@ def test_nested_loop(parent_backend, child_backend):
         delayed(nested_loop)(child_backend) for _ in range(2))
 
 
+def raise_exception(backend):
+    raise ValueError
+
+
+def test_nested_loop_with_exception_with_loky():
+    with raises(ValueError):
+        with Parallel(n_jobs=2, backend="loky") as parallel:
+            parallel([delayed(nested_loop)("loky"),
+                      delayed(raise_exception)("loky")])
+
+
 def test_mutate_input_with_threads():
     """Input is mutable when using the threading backend"""
     q = Queue(maxsize=5)
@@ -998,6 +1009,8 @@ import sys
 sys.path.insert(0, {joblib_root_folder!r})
 
 from joblib import Parallel, delayed, hash
+import multiprocessing as mp
+mp.util.log_to_stderr(5)
 
 class MyList(list):
     '''MyList is interactively defined by MyList.append is a built-in'''
@@ -1020,6 +1033,7 @@ def test_parallel_with_interactively_defined_bound_method(tmpdir):
     script.write(INTERACTIVELY_DEFINED_SUBCLASS_WITH_METHOD_SCRIPT_CONTENT)
     check_subprocess_call([sys.executable, script.strpath],
                           stdout_regex=r'\[None, None, None\]',
+                          stderr_regex=r'LokyProcess',
                           timeout=5)
 
 
@@ -1180,30 +1194,22 @@ def test_delayed_check_pickle_deprecated():
 @parametrize('backend', ['multiprocessing', 'loky'])
 def test_backend_batch_statistics_reset(backend):
     """Test that a parallel backend correctly resets its batch statistics."""
-    relative_tolerance = 0.2
     n_jobs = 2
     n_inputs = 500
     task_time = 2. / n_inputs
 
     p = Parallel(verbose=10, n_jobs=n_jobs, backend=backend)
-    start_time = time.time()
     p(delayed(time.sleep)(task_time) for i in range(n_inputs))
-    ref_time = time.time() - start_time
     assert (p._backend._effective_batch_size ==
             p._backend._DEFAULT_EFFECTIVE_BATCH_SIZE)
     assert (p._backend._smoothed_batch_duration ==
             p._backend._DEFAULT_SMOOTHED_BATCH_DURATION)
 
-    start_time = time.time()
     p(delayed(time.sleep)(task_time) for i in range(n_inputs))
-    test_time = time.time() - start_time
     assert (p._backend._effective_batch_size ==
             p._backend._DEFAULT_EFFECTIVE_BATCH_SIZE)
     assert (p._backend._smoothed_batch_duration ==
             p._backend._DEFAULT_SMOOTHED_BATCH_DURATION)
-
-    # Tolerance in the timing comparison to avoid random failures on CIs
-    assert test_time / ref_time <= 1 + relative_tolerance
 
 
 def test_backend_hinting_and_constraints():
@@ -1362,10 +1368,15 @@ def test_nested_parallelism_limit(backend):
     with parallel_backend(backend, n_jobs=2):
         backend_types_and_levels = _recursive_backend_info()
 
+    if cpu_count() == 1:
+        second_level_backend_type = 'SequentialBackend'
+    else:
+        second_level_backend_type = 'ThreadingBackend'
+
     top_level_backend_type = backend.title() + 'Backend'
     expected_types_and_levels = [
         (top_level_backend_type, 0),
-        ('ThreadingBackend', 1),
+        (second_level_backend_type, 1),
         ('SequentialBackend', 2),
         ('SequentialBackend', 3)
     ]
@@ -1375,7 +1386,7 @@ def test_nested_parallelism_limit(backend):
 @with_numpy
 def test_nested_parallelism_with_dask():
     distributed = pytest.importorskip('distributed')
-    client = distributed.Client()  # noqa
+    client = distributed.Client(n_workers=2, threads_per_worker=2)  # noqa
 
     # 10 MB of data as argument to trigger implicit scattering
     data = np.ones(int(1e7), dtype=np.uint8)
