@@ -13,14 +13,8 @@ import pickle
 import sys
 import time
 import datetime
-try:
-    # Python 2.7: use the C pickle to speed up
-    # test_concurrency_safe_write which pickles big python objects
-    import cPickle as cpickle
-except ImportError:
-    import pickle as cpickle
-import functools
 
+import pytest
 
 from joblib.memory import Memory
 from joblib.memory import MemorizedFunc, NotMemorizedFunc
@@ -30,13 +24,12 @@ from joblib.memory import register_store_backend, _STORE_BACKENDS
 from joblib.memory import _build_func_identifier, _store_backend_factory
 from joblib.memory import JobLibCollisionWarning
 from joblib.parallel import Parallel, delayed
-from joblib._store_backends import StoreBackendBase
+from joblib._store_backends import StoreBackendBase, FileSystemStoreBackend
 from joblib.test.common import with_numpy, np
 from joblib.test.common import with_multiprocessing
-from joblib.testing import parametrize, raises, warns, timeout
+from joblib.testing import parametrize, raises, warns
 from joblib._compat import PY3_OR_LATER
-from joblib.backports import concurrency_safe_rename
-from joblib._store_backends import concurrency_safe_write
+from joblib.hashing import hash
 
 
 ###############################################################################
@@ -353,6 +346,26 @@ def test_memory_ignore(tmpdir):
     assert len(accumulator) == 1
     z(0, y=2)
     assert len(accumulator) == 1
+
+
+def test_memory_args_as_kwargs(tmpdir):
+    """Non-regression test against 0.12.0 changes.
+
+    https://github.com/joblib/joblib/pull/751
+    """
+    memory = Memory(location=tmpdir.strpath, verbose=0)
+
+    @memory.cache
+    def plus_one(a):
+        return a + 1
+
+    # It's possible to call a positional arg as a kwarg.
+    assert plus_one(1) == 2
+    assert plus_one(a=1) == 2
+
+    # However, a positional argument that joblib hadn't seen
+    # before would cause a failure if it was passed as a kwarg.
+    assert plus_one(a=2) == 3
 
 
 @parametrize('ignore, verbose, mmap_mode', [(['x'], 100, 'r'),
@@ -823,48 +836,6 @@ def test_cached_function_race_condition_when_persisting_output_2(tmpdir,
     assert exception_msg not in stderr
 
 
-def write_func(output, filename):
-    with open(filename, 'wb') as f:
-        cpickle.dump(output, f)
-
-
-def concurrency_safe_write_rename(to_write, filename, write_func):
-    temporary_filename = concurrency_safe_write(to_write,
-                                                filename, write_func)
-    concurrency_safe_rename(temporary_filename, filename)
-
-
-def load_func(expected, filename):
-    for i in range(10):
-        try:
-            with open(filename, 'rb') as f:
-                reloaded = cpickle.load(f)
-            break
-        except (OSError, IOError):
-            # On Windows you can have WindowsError ([Error 5] Access
-            # is denied or [Error 13] Permission denied) when reading the file,
-            # probably because a writer process has a lock on the file
-            time.sleep(0.1)
-    else:
-        raise
-    assert expected == reloaded
-
-
-@timeout(0)  # No timeout as this test can be long
-@with_multiprocessing
-@parametrize('backend', ['multiprocessing', 'loky', 'threading'])
-def test_concurrency_safe_write(tmpdir, backend):
-    # Add one item to cache
-    filename = tmpdir.join('test.pkl').strpath
-
-    obj = {str(i): i for i in range(int(1e5))}
-    funcs = [functools.partial(concurrency_safe_write_rename,
-                               write_func=write_func)
-             if i % 3 != 2 else load_func for i in range(12)]
-    Parallel(n_jobs=2, backend=backend)(
-        delayed(func)(obj, filename) for func in funcs)
-
-
 def test_memory_recomputes_after_an_error_why_loading_results(tmpdir,
                                                               monkeypatch):
     memory = Memory(location=tmpdir.strpath)
@@ -1016,3 +987,123 @@ def test_dummy_store_backend():
 
     backend_obj = _store_backend_factory(backend_name, "dummy_location")
     assert isinstance(backend_obj, DummyStoreBackend)
+
+
+def test_filesystem_store_backend_repr(tmpdir):
+    # Verify string representation of a filesystem store backend.
+
+    repr_pattern = 'FileSystemStoreBackend(location="{location}")'
+    backend = FileSystemStoreBackend()
+    assert backend.location is None
+
+    repr(backend)  # Should not raise an exception
+
+    assert str(backend) == repr_pattern.format(location=None)
+
+    # backend location is passed explicitely via the configure method (called
+    # by the internal _store_backend_factory function)
+    backend.configure(tmpdir.strpath)
+
+    assert str(backend) == repr_pattern.format(location=tmpdir.strpath)
+
+    repr(backend)  # Should not raise an exception
+
+
+def test_memory_objects_repr(tmpdir):
+    # Verify printable reprs of MemorizedResult, MemorizedFunc and Memory.
+
+    def my_func(a, b):
+        return a + b
+
+    memory = Memory(location=tmpdir.strpath, verbose=0)
+    memorized_func = memory.cache(my_func)
+
+    memorized_func_repr = 'MemorizedFunc(func={func}, location={location})'
+
+    assert str(memorized_func) == memorized_func_repr.format(
+        func=my_func,
+        location=memory.store_backend.location)
+
+    memorized_result = memorized_func.call_and_shelve(42, 42)
+
+    memorized_result_repr = ('MemorizedResult(location="{location}", '
+                             'func="{func}", args_id="{args_id}")')
+
+    assert str(memorized_result) == memorized_result_repr.format(
+        location=memory.store_backend.location,
+        func=memorized_result.func_id,
+        args_id=memorized_result.args_id)
+
+    assert str(memory) == 'Memory(location={location})'.format(
+        location=memory.store_backend.location)
+
+
+def test_memorized_result_pickle(tmpdir):
+    # Verify a MemoryResult object can be pickled/depickled. Non regression
+    # test introduced following issue
+    # https://github.com/joblib/joblib/issues/747
+
+    memory = Memory(location=tmpdir.strpath)
+
+    @memory.cache
+    def g(x):
+        return x**2
+
+    memorized_result = g.call_and_shelve(4)
+    memorized_result_pickle = pickle.dumps(memorized_result)
+    memorized_result_loads = pickle.loads(memorized_result_pickle)
+
+    assert memorized_result.store_backend.location == \
+        memorized_result_loads.store_backend.location
+    assert memorized_result.func == memorized_result_loads.func
+    assert memorized_result.args_id == memorized_result_loads.args_id
+    assert str(memorized_result) == str(memorized_result_loads)
+
+
+def compare(left, right, ignored_attrs=None):
+    if ignored_attrs is None:
+        ignored_attrs = []
+
+    left_vars = vars(left)
+    right_vars = vars(right)
+    assert set(left_vars.keys()) == set(right_vars.keys())
+    for attr in left_vars.keys():
+        if attr in ignored_attrs:
+            continue
+        assert left_vars[attr] == right_vars[attr]
+
+
+@pytest.mark.parametrize('memory_kwargs',
+                         [{'compress': 3, 'verbose': 2},
+                          {'mmap_mode': 'r', 'verbose': 5, 'bytes_limit': 1e6,
+                           'backend_options': {'parameter': 'unused'}}])
+def test_memory_pickle_dump_load(tmpdir, memory_kwargs):
+    memory = Memory(location=tmpdir.strpath, **memory_kwargs)
+
+    memory_reloaded = pickle.loads(pickle.dumps(memory))
+
+    # Compare Memory instance before and after pickle roundtrip
+    compare(memory.store_backend, memory_reloaded.store_backend)
+    compare(memory, memory_reloaded,
+            ignored_attrs=set(['store_backend', 'timestamp']))
+    assert hash(memory) == hash(memory_reloaded)
+
+    func_cached = memory.cache(f)
+
+    func_cached_reloaded = pickle.loads(pickle.dumps(func_cached))
+
+    # Compare MemorizedFunc instance before/after pickle roundtrip
+    compare(func_cached.store_backend, func_cached_reloaded.store_backend)
+    compare(func_cached, func_cached_reloaded,
+            ignored_attrs=set(['store_backend', 'timestamp']))
+    assert hash(func_cached) == hash(func_cached_reloaded)
+
+    # Compare MemorizedResult instance before/after pickle roundtrip
+    memorized_result = func_cached.call_and_shelve(1)
+    memorized_result_reloaded = pickle.loads(pickle.dumps(memorized_result))
+
+    compare(memorized_result.store_backend,
+            memorized_result_reloaded.store_backend)
+    compare(memorized_result, memorized_result_reloaded,
+            ignored_attrs=set(['store_backend', 'timestamp']))
+    assert hash(memorized_result) == hash(memorized_result_reloaded)
