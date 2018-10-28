@@ -1,6 +1,21 @@
 Latest changes
 ===============
 
+Release 0.12.5
+--------------
+
+Thomas Moreau, Olivier Grisel
+
+    Include loky 2.3.1 with better error reporting when a worker is
+    abruptly terminated. Also fixes spurious debug output.
+
+
+Pierre Glaser
+
+    Include cloudpickle 0.5.6. Fix a bug with the handling of global
+    variables by locally defined functions.
+
+
 Release 0.12.4
 --------------
 
