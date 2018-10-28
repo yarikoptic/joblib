@@ -16,6 +16,15 @@ Files: doc/sphinxext/*
 Copyright: 2008, Stefan van der Walt <stefan@mentat.za.net>, Pauli Virtanen <pav@iki.fi>
 License: BSD-2
 
+Files: joblib/externals/loky/*
+Copyright: 2009, Thomas Moreau and Olivier Grisel
+License: BSD-3
+
+Files: joblib/externals/cloudpickle/*
+Copyright: 2012, Regents of the University of California.
+           2009, PiCloud, Inc
+License: BSD-3
+
 Files: debian/*
 Copyright: 2010-2018, NeuroDebian Team <team@neuro.debian.net>
 License: BSD-3
