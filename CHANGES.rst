@@ -1,6 +1,38 @@
 Latest changes
 ===============
 
+Release 0.12.5
+--------------
+
+Thomas Moreau, Olivier Grisel
+
+    Include loky 2.3.1 with better error reporting when a worker is
+    abruptly terminated. Also fixes spurious debug output.
+
+
+Pierre Glaser
+
+    Include cloudpickle 0.5.6. Fix a bug with the handling of global
+    variables by locally defined functions.
+
+
+Release 0.12.4
+--------------
+
+Thomas Moreau, Pierre Glaser, Olivier Grisel
+
+    Include loky 2.3.0 with many bugfixes, notably w.r.t. when setting
+    non-default multiprocessing contexts. Also include improvement on
+    memory management of long running worker processes and fixed issues
+    when using the loky backend under PyPy.
+
+
+Maxime Weyl
+
+    Loading a corrupted cached file with mmap mode enabled would
+    recompute the results and return them without memmory mapping.
+
+
 Release 0.12.3
 --------------
 
@@ -33,7 +65,7 @@ Maxime Weyl
 
     Prevent MemorizedFunc.call_and_shelve from loading cached results to
     RAM when not necessary. Results in big performance improvements
-    
+
 
 Release 0.12.2
 --------------
