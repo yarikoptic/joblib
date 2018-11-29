@@ -339,7 +339,7 @@ def test_memory_numpy_check_mmap_mode(tmpdir, monkeypatch):
     assert len(recorded_warnings) == 1
     exception_msg = 'Exception while loading results'
     assert exception_msg in recorded_warnings[0]
-    # Asserts that the recomputation returns a mmmap
+    # Asserts that the recomputation returns a mmap
     assert isinstance(d, np.memmap)
     assert d.mode == 'r'
 
@@ -512,6 +512,42 @@ def test_call_and_shelve_argument_hash(tmpdir):
     assert len(w) == 1
     assert "The 'argument_hash' attribute has been deprecated" \
         in str(w[-1].message)
+
+
+def test_call_and_shelve_lazily_load_stored_result(tmpdir):
+    """Check call_and_shelve only load stored data if needed."""
+    test_access_time_file = tmpdir.join('test_access')
+    test_access_time_file.write('test_access')
+    test_access_time = os.stat(test_access_time_file.strpath).st_atime
+    # check file system access time stats resolution is lower than test wait
+    # timings.
+    time.sleep(0.5)
+    assert test_access_time_file.read() == 'test_access'
+
+    if test_access_time == os.stat(test_access_time_file.strpath).st_atime:
+        # Skip this test when access time cannot be retrieved with enough
+        # precision from the file system (e.g. NTFS on windows).
+        pytest.skip("filesystem does not support fine-grained access time "
+                    "attribute")
+
+    memory = Memory(location=tmpdir.strpath, verbose=0)
+    func = memory.cache(f)
+    func_id, argument_hash = func._get_output_identifiers(2)
+    result_path = os.path.join(memory.store_backend.location,
+                               func_id, argument_hash, 'output.pkl')
+    assert func(2) == 5
+    first_access_time = os.stat(result_path).st_atime
+    time.sleep(1)
+
+    # Should not access the stored data
+    result = func.call_and_shelve(2)
+    assert isinstance(result, MemorizedResult)
+    assert os.stat(result_path).st_atime == first_access_time
+    time.sleep(1)
+
+    # Read the stored data => last access time is greater than first_access
+    assert result.get() == 5
+    assert os.stat(result_path).st_atime > first_access_time
 
 
 def test_memorized_pickling(tmpdir):
@@ -873,8 +909,8 @@ def test_cached_function_race_condition_when_persisting_output_2(tmpdir,
     assert exception_msg not in stderr
 
 
-def test_memory_recomputes_after_an_error_while_loading_results(tmpdir,
-                                                              monkeypatch):
+def test_memory_recomputes_after_an_error_while_loading_results(
+        tmpdir, monkeypatch):
     memory = Memory(location=tmpdir.strpath)
 
     def func(arg):
@@ -904,6 +940,20 @@ def test_memory_recomputes_after_an_error_while_loading_results(tmpdir,
     assert exception_msg in recorded_warnings[0]
     assert recomputed_arg == arg
     assert recomputed_timestamp > timestamp
+
+    # Corrupting output.pkl to make sure that an error happens when
+    # loading the cached result
+    corrupt_single_cache_item(memory)
+    reference = cached_func.call_and_shelve(arg)
+    try:
+        reference.get()
+        raise AssertionError(
+            "It normally not possible to load a corrupted"
+            " MemorizedResult"
+        )
+    except KeyError as e:
+        message = "is corrupted"
+        assert message in str(e.args)
 
 
 def test_deprecated_cachedir_behaviour(tmpdir):
