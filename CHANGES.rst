@@ -1,6 +1,24 @@
 Latest changes
 ===============
 
+Release 0.13.0
+--------------
+
+Thomas Moreau
+
+   Include loky 2.4.2 with default serialization with ``cloudpickle``.
+   This can be tweaked with the environment variable ``LOKY_PICKLER``.
+
+Thomas Moreau
+
+   Fix nested backend in SequentialBackend to avoid changing the default
+   backend to Sequential. (#792)
+
+Thomas Moreau, Olivier Grisel
+
+    Fix nested_backend behavior to avoid setting the default number of
+    workers to -1 when the backend is not dask. (#784)
+
 Release 0.12.5
 --------------
 
@@ -26,6 +44,10 @@ Thomas Moreau, Pierre Glaser, Olivier Grisel
     memory management of long running worker processes and fixed issues
     when using the loky backend under PyPy.
 
+
+Maxime Weyl
+
+    Raises a more explicit exception when a corrupted MemorizedResult is loaded.
 
 Maxime Weyl
 
