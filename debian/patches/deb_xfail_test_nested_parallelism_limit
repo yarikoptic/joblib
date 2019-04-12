@@ -1,0 +1,21 @@
+From: Yaroslav Halchenko <debian@onerussian.com>
+Subject: xfail test_nested_parallelism_limit failing on single core machines
+
+  Thanks Santiago Vila for the report and all the details/patch.
+  This is just a workaround until fixed upstream
+
+Origin: Debian
+Bug: https://github.com/joblib/joblib/issues/870
+Bug-Debian: http://bugs.debian.org/926930
+Last-Update: 2019-04-12
+
+--- a/joblib/test/test_parallel.py
++++ b/joblib/test/test_parallel.py
+@@ -1429,6 +1429,7 @@ def _recursive_backend_info(limit=3, **k
+         return this_level + results[0]
+ 
+ 
++@pytest.mark.xfail
+ @with_multiprocessing
+ @parametrize('backend', ['loky', 'threading'])
+ def test_nested_parallelism_limit(backend):

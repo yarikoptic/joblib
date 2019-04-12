@@ -1,1 +1,2 @@
+deb_xfail_test_nested_parallelism_limit
 deb_collect_ignore_setup

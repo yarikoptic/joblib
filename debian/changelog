@@ -1,3 +1,10 @@
+joblib (0.13.0-2) unstable; urgency=medium
+
+  * debian/patches/deb_xfail_test_nested_parallelism_limit (Closes: #926930)
+    - xfail a test failing on single core boxes. Thanks Santiago Vila
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Fri, 12 Apr 2019 10:54:23 -0400
+
 joblib (0.13.0-1) unstable; urgency=medium
 
   * Fresh upstream release
