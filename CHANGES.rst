@@ -1,6 +1,39 @@
 Latest changes
 ===============
 
+Release 0.13.2
+--------------
+
+Pierre Glaser
+
+   Upgrade to cloudpickle 0.8.0
+
+   Add a non-regression test related to joblib issues #836 and #833, reporting
+   that cloudpickle versions between 0.5.4 and 0.7 introduced a bug where
+   global variables changes in a parent process between two calls to
+   joblib.Parallel would not be propagated into the workers
+
+
+Release 0.13.1
+--------------
+
+Pierre Glaser
+
+   Memory now accepts pathlib.Path objects as ``location`` parameter.
+   Also, a warning is raised if the returned backend is None while
+   ``location`` is not None.
+
+Olivier Grisel
+
+   Make ``Parallel`` raise an informative ``RuntimeError`` when the
+   active parallel backend has zero worker.
+
+   Make the ``DaskDistributedBackend`` wait for workers before trying to
+   schedule work. This is useful in particular when the workers are
+   provisionned dynamically but provisionning is not immediate (for
+   instance using Kubernetes, Yarn or an HPC job queue).
+
+
 Release 0.13.0
 --------------
 

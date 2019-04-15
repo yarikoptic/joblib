@@ -59,6 +59,11 @@ try:
 except ImportError:
     parallel_sum = None
 
+try:
+    import distributed
+except ImportError:
+    distributed = None
+
 from joblib._parallel_backends import SequentialBackend
 from joblib._parallel_backends import ThreadingBackend
 from joblib._parallel_backends import MultiprocessingBackend
@@ -1453,8 +1458,8 @@ def test_nested_parallelism_limit(backend):
 
 
 @with_numpy
+@skipif(distributed is None, reason='This test requires dask')
 def test_nested_parallelism_with_dask():
-    distributed = pytest.importorskip('distributed')
     client = distributed.Client(n_workers=2, threads_per_worker=2)  # noqa
 
     # 10 MB of data as argument to trigger implicit scattering
@@ -1506,3 +1511,57 @@ def test_parallel_thread_limit(backend):
     for value in res[0][0].values():
         assert value == '1'
     assert all([r[1] == 1 for r in res])
+
+
+@skipif(distributed is not None,
+        reason='This test requires dask NOT installed')
+def test_dask_backend_when_dask_not_installed():
+    with raises(ValueError, match='Please install dask'):
+        parallel_backend('dask')
+
+
+def test_zero_worker_backend():
+    # joblib.Parallel should reject with an explicit error message parallel
+    # backends that have no worker.
+    class ZeroWorkerBackend(ThreadingBackend):
+        def configure(self, *args, **kwargs):
+            return 0
+
+        def apply_async(self, func, callback=None):   # pragma: no cover
+            raise TimeoutError("No worker available")
+
+        def effective_n_jobs(self, n_jobs):   # pragma: no cover
+            return 0
+
+    expected_msg = "ZeroWorkerBackend has no active worker"
+    with parallel_backend(ZeroWorkerBackend()):
+        with pytest.raises(RuntimeError, match=expected_msg):
+            Parallel(n_jobs=2)(delayed(id)(i) for i in range(2))
+
+
+def test_globals_update_at_each_parallel_call():
+    # This is a non-regression test related to joblib issues #836 and #833.
+    # Cloudpickle versions between 0.5.4 and 0.7 introduced a bug where global
+    # variables changes in a parent process between two calls to
+    # joblib.Parallel would not be propagated into the workers.
+    global MY_GLOBAL_VARIABLE
+    MY_GLOBAL_VARIABLE = "original value"
+
+    def check_globals():
+        global MY_GLOBAL_VARIABLE
+        return MY_GLOBAL_VARIABLE
+
+    assert check_globals() == "original value"
+
+    workers_global_variable = Parallel(n_jobs=2)(
+        delayed(check_globals)() for i in range(2))
+    assert set(workers_global_variable) == {"original value"}
+
+    # Change the value of MY_GLOBAL_VARIABLE, and make sure this change gets
+    # propagated into the workers environment
+    MY_GLOBAL_VARIABLE = "changed value"
+    assert check_globals() == "changed value"
+
+    workers_global_variable = Parallel(n_jobs=2)(
+        delayed(check_globals)() for i in range(2))
+    assert set(workers_global_variable) == {"changed value"}
